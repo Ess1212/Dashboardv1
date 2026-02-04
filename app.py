@@ -2604,99 +2604,29 @@ LOGGER.info("🔵 SECTION 9 loaded — BLUE header & clock aligned.")
 # =============================================================================
 # END SECTION 9
 # =============================================================================
-
 # =============================================================================
-# SECTION 10 — FULL DASHBOARD UI (ADVANCED ENTERPRISE UI)
-# =============================================================================
-# FEATURES:
-# - Color-coded SWG bar panels
-#   • SWG01 → GREEN
-#   • SWG02 → BLUE
-#   • SWG03 → ORANGE
-# - Advanced blue-styled table (CSS only)
-# - Streamlit-safe widget reset
-# - TODAY-only DB preview
-# - Editable preview + Apply Edit (DB update)
-# - Dispatch message with NEW FORMAT + TOTAL
+# SECTION 10 — FULL DASHBOARD UI (DISPATCH FORMAT v2)
 # =============================================================================
 
 # =============================================================================
-# 10.0 — Extra UI CSS (SECTION-LOCAL, SAFE)
+# 10.0 — LOCAL UI CSS
 # =============================================================================
-st.markdown(
-    """
-    <style>
-    /* ============================================================
-       SWG BAR PANELS
-       ============================================================ */
-    .swg-bar {
-        border-radius: 16px;
-        padding: 12px 14px;
-        margin-bottom: 12px;
-        box-shadow: 0 14px 32px rgba(0,0,0,0.45);
-        border: 1px solid rgba(255,255,255,0.18);
-    }
-
-    .swg-green {
-        background: linear-gradient(135deg, #14532d, #22c55e);
-    }
-
-    .swg-blue {
-        background: linear-gradient(135deg, #1e3a8a, #3b82f6);
-    }
-
-    .swg-orange {
-        background: linear-gradient(135deg, #7c2d12, #fb923c);
-    }
-
-    .swg-title {
-        font-weight: 900;
-        letter-spacing: 0.4px;
-        margin-bottom: 6px;
-        font-size: 14px;
-    }
-
-    /* ============================================================
-       ADVANCED BLUE TABLE
-       ============================================================ */
-    div[data-testid="stDataFrame"],
-    div[data-testid="stDataEditor"] {
-        border-radius: 16px !important;
-        overflow: hidden !important;
-        border: 1px solid rgba(59,130,246,0.45) !important;
-        box-shadow: 0 18px 38px rgba(0,0,0,0.55) !important;
-    }
-
-    thead th {
-        background: linear-gradient(180deg, #1e3a8a, #1e40af) !important;
-        color: #ffffff !important;
-        font-weight: 900 !important;
-        font-size: 12px !important;
-        text-align: center !important;
-    }
-
-    tbody td {
-        background: rgba(2, 12, 36, 0.92) !important;
-        color: rgba(240,248,255,0.95) !important;
-        text-align: center !important;
-        font-size: 12px !important;
-    }
-
-    tbody tr:hover td {
-        background: rgba(30,58,138,0.65) !important;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+st.markdown("""
+<style>
+.swg-bar{border-radius:16px;padding:14px;margin-bottom:14px;
+box-shadow:0 14px 34px rgba(0,0,0,.45)}
+.swg-green{background:linear-gradient(135deg,#064e3b,#22c55e)}
+.swg-blue{background:linear-gradient(135deg,#1e3a8a,#3b82f6)}
+.swg-orange{background:linear-gradient(135deg,#7c2d12,#fb923c)}
+.swg-title{font-weight:900;letter-spacing:.4px;margin-bottom:8px}
+</style>
+""", unsafe_allow_html=True)
 
 # =============================================================================
-# 10.1 — Helper Functions
+# 10.1 — SAFE HELPERS
 # =============================================================================
 def _safe_float(v):
     try:
-        if v is None:
-            return None
         s = str(v).strip()
         return None if s == "" else float(s)
     except Exception:
@@ -2707,32 +2637,35 @@ def _load_today_preview_df(dt_str: str) -> pd.DataFrame:
     if not dt_str:
         return pd.DataFrame()
 
-    start, end = get_today_range_strings()
-    table = resolve_yearly_table_name(dt_str)
+    try:
+        start, end = get_today_range_strings()
+        table = resolve_yearly_table_name(dt_str)
 
-    sql = f"""
-    SELECT *
-    FROM {table}
-    WHERE
-        (SWG1_DateTime BETWEEN ? AND ?)
-        OR (SWG2_DateTime BETWEEN ? AND ?)
-        OR (SWG3_DateTime BETWEEN ? AND ?)
-    ORDER BY {DB_PRIMARY_KEY_COL} DESC
-    LIMIT 50;
-    """
+        sql = f"""
+        SELECT *
+        FROM {table}
+        WHERE
+            (SWG1_DateTime BETWEEN ? AND ?)
+         OR (SWG2_DateTime BETWEEN ? AND ?)
+         OR (SWG3_DateTime BETWEEN ? AND ?)
+        ORDER BY {DB_PRIMARY_KEY_COL} DESC
+        LIMIT 50
+        """
 
-    return pd.DataFrame(
-        fetch_all(sql, params=(start, end, start, end, start, end))
-    )
+        rows = fetch_all(sql, (start, end, start, end, start, end))
+        return pd.DataFrame(rows)
+
+    except Exception as e:
+        st.error(f"Preview load failed: {e}")
+        return pd.DataFrame()
 
 
 # =============================================================================
-# 10.1.1 — DISPATCH MESSAGE FORMAT (UPDATED)
+# 10.2 — DISPATCH MESSAGE FORMAT (NEW)
 # =============================================================================
 def _generate_message_from_row(row: pd.Series) -> str:
-    lines: list[str] = []
+    lines = ["START"]
 
-    # Resolve datetime from any SWG column
     dt = (
         row.get("SWG1_DateTime")
         or row.get("SWG2_DateTime")
@@ -2742,87 +2675,77 @@ def _generate_message_from_row(row: pd.Series) -> str:
     if not dt:
         return ""
 
-    # Header
     lines.append(f"TIME={dt[:16]}")
-    lines.append("EVENT=CHARGE")
     lines.append("")
 
     total_p = 0.0
     total_q = 0.0
 
     for swg in SWG_IDS:
-        dt_c, a_c, r_c, s_c = SWG_COLS_BY_ID[swg]
+        dt_c, a_c, q_c, s_c = SWG_COLS_BY_ID[swg]
 
-        if not pd.isna(row.get(dt_c)):
-            p = float(row.get(a_c) or 0)
-            q = float(row.get(r_c) or 0)
-            soc = row.get(s_c)
+        if pd.isna(row.get(dt_c)):
+            continue
 
-            total_p += p
-            total_q += q
+        p = float(row.get(a_c) or 0)
+        q = float(row.get(q_c) or 0)
+        soc = float(row.get(s_c) or 0)
 
-            swg_no = swg.replace("SWG", "SWG0")
+        total_p += p
+        total_q += q
 
-            p_str = f"{int(p)}" if p.is_integer() else f"{p}"
-            q_str = f"{int(q)}" if q.is_integer() else f"{q}"
-            soc_str = f"{soc:.1f}" if isinstance(soc, float) else soc
+        swg_no = swg.replace("SWG", "SWG0")
 
-            lines.append(
-                f"{swg_no}|P={p_str}Mw|SOC={soc_str}Mvar|Q={q_str}%"
-            )
+        lines.append(
+            f"#{swg_no}: "
+            f"P={int(p) if p.is_integer() else p}Mw, "
+            f"Q={int(q) if q.is_integer() else q}Mvar, "
+            f"SOC={int(soc) if soc.is_integer() else soc}%"
+        )
 
     lines.append("")
-    total_p_str = f"{int(total_p)}" if total_p.is_integer() else f"{total_p}"
-    total_q_str = f"{int(total_q)}" if total_q.is_integer() else f"{total_q}"
-
     lines.append(
-        f"TOTAL|P={total_p_str}Mw|Q={total_q_str}Mvar"
+        f"#TOTAL:P={int(total_p) if total_p.is_integer() else total_p}Mw, "
+        f"Q={int(total_q) if total_q.is_integer() else total_q}Mvar"
     )
 
     return "\n".join(lines)
 
-# =============================================================================
-# 10.2 — Section Header
-# =============================================================================
-st.markdown(
-    """
-    <div class="pd-card">
-      <h3>🧾 INPUT DATA PANELS — SWG01 / SWG02 / SWG03</h3>
-      <small>COLOR-CODED • TODAY ONLY • DATABASE-BACKED</small>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
 
 # =============================================================================
-# 10.3 — Layout
+# 10.3 — SECTION HEADER
 # =============================================================================
-left, right = st.columns([3.3, 1.5], gap="large")
+st.markdown("""
+<div class="pd-card">
+<h3>🧾 INPUT DATA PANELS — SWG1 / SWG2 / SWG3</h3>
+<small>TODAY ONLY • QUEUE SAFE • DATABASE BACKED</small>
+</div>
+""", unsafe_allow_html=True)
+
+left, right = st.columns([3.2, 1.6], gap="large")
 
 # =============================================================================
-# LEFT — SWG INPUT BARS + TABLE
+# LEFT — INPUT + TABLE
 # =============================================================================
 with left:
-
     c1, c2, c3 = st.columns(3, gap="medium")
 
-    def render_swg_bar(swg_id, label, css_class, kA, kR, kS, btn_key):
-        st.markdown(f"<div class='swg-bar {css_class}'>", unsafe_allow_html=True)
+    def render_swg_bar(swg, label, css, kA, kQ, kS, btn):
+        st.markdown(f"<div class='swg-bar {css}'>", unsafe_allow_html=True)
         st.markdown(f"<div class='swg-title'>⚡ {label}</div>", unsafe_allow_html=True)
 
         a = st.text_input("Active Power (MW)", key=kA)
-        r = st.text_input("Reactive Power (MVar)", key=kR)
+        q = st.text_input("Reactive Power (Mvar)", key=kQ)
         s = st.text_input("SOC (%)", key=kS)
 
-        if st.button(f"ADD {label}", key=btn_key, use_container_width=True):
+        if st.button(f"ADD {label}", key=btn, use_container_width=True):
             save_repository_add_swg_row(
-                swg_id=swg_id,
+                swg_id=swg,
                 dt=st.session_state[SSK_INPUT_DATETIME],
                 active=_safe_float(a),
-                reactive=_safe_float(r),
+                reactive=_safe_float(q),
                 soc=_safe_float(s),
             )
-
             reset_insert_inputs()
             st.session_state["needs_preview_refresh"] = True
             st.success(f"{label} saved")
@@ -2831,122 +2754,86 @@ with left:
         st.markdown("</div>", unsafe_allow_html=True)
 
     with c1:
-        render_swg_bar(
-            "SWG1", "SWG01", "swg-green",
-            SSK_INPUT_SWG1_ACTIVE,
-            SSK_INPUT_SWG1_REACTIVE,
-            SSK_INPUT_SWG1_SOC,
-            BTN_ADD_SWG1,
-        )
-
+        render_swg_bar("SWG1","SWG01","swg-green",
+                       SSK_INPUT_SWG1_ACTIVE,SSK_INPUT_SWG1_REACTIVE,SSK_INPUT_SWG1_SOC,BTN_ADD_SWG1)
     with c2:
-        render_swg_bar(
-            "SWG2", "SWG02", "swg-blue",
-            SSK_INPUT_SWG2_ACTIVE,
-            SSK_INPUT_SWG2_REACTIVE,
-            SSK_INPUT_SWG2_SOC,
-            BTN_ADD_SWG2,
-        )
-
+        render_swg_bar("SWG2","SWG02","swg-blue",
+                       SSK_INPUT_SWG2_ACTIVE,SSK_INPUT_SWG2_REACTIVE,SSK_INPUT_SWG2_SOC,BTN_ADD_SWG2)
     with c3:
-        render_swg_bar(
-            "SWG3", "SWG03", "swg-orange",
-            SSK_INPUT_SWG3_ACTIVE,
-            SSK_INPUT_SWG3_REACTIVE,
-            SSK_INPUT_SWG3_SOC,
-            BTN_ADD_SWG3,
-        )
+        render_swg_bar("SWG3","SWG03","swg-orange",
+                       SSK_INPUT_SWG3_ACTIVE,SSK_INPUT_SWG3_REACTIVE,SSK_INPUT_SWG3_SOC,BTN_ADD_SWG3)
 
-    # -------------------------------------------------------------------------
-    # TABLE PREVIEW
-    # -------------------------------------------------------------------------
-    st.markdown(
-        "<div class='pd-card-tight'><b>📊 TABLE PREVIEW — TODAY</b></div>",
-        unsafe_allow_html=True,
-    )
+    # ---------------- TABLE PREVIEW ----------------
+    st.markdown("<div class='pd-card-tight'><b>📊 TABLE PREVIEW — TODAY (DB)</b></div>",
+                unsafe_allow_html=True)
 
-    if st.session_state["needs_preview_refresh"]:
-        st.session_state[SSK_PREVIEW_DF] = _load_today_preview_df(
-            st.session_state[SSK_INPUT_DATETIME]
-        )
-        st.session_state["edit_buffer_df"] = (
-            st.session_state[SSK_PREVIEW_DF].copy()
-            if st.session_state[SSK_PREVIEW_DF] is not None
-            else None
-        )
+    if st.session_state.get("needs_preview_refresh", True):
+        df = _load_today_preview_df(st.session_state[SSK_INPUT_DATETIME])
+        st.session_state[SSK_PREVIEW_DF] = df
+        st.session_state["edit_buffer_df"] = df.copy()
         st.session_state["needs_preview_refresh"] = False
         st.session_state["needs_text_regeneration"] = True
 
-    if st.session_state[SSK_PREVIEW_DF] is None or st.session_state[SSK_PREVIEW_DF].empty:
+    if st.session_state[SSK_PREVIEW_DF].empty:
         st.info("No data yet for today.")
     else:
-        edited_df = st.data_editor(
+        edited = st.data_editor(
             st.session_state["edit_buffer_df"],
             num_rows="fixed",
             use_container_width=True,
             height=280,
         )
-
-        if not edited_df.equals(st.session_state["edit_buffer_df"]):
-            st.session_state["edit_buffer_df"] = edited_df
+        if not edited.equals(st.session_state["edit_buffer_df"]):
+            st.session_state["edit_buffer_df"] = edited
             st.session_state["has_unsaved_edits"] = True
 
+
 # =============================================================================
-# RIGHT — MESSAGE + APPLY / COPY
+# RIGHT — MESSAGE / APPLY / COPY
 # =============================================================================
 with right:
-
-    st.markdown(
-        "<div class='pd-card-tight'><b>📝 DISPATCH MESSAGE</b></div>",
-        unsafe_allow_html=True,
-    )
+    st.markdown("<div class='pd-card-tight'><b>📝 MESSAGE SUMMARY & EDIT</b></div>",
+                unsafe_allow_html=True)
 
     if (
-        st.session_state["needs_text_regeneration"]
-        and st.session_state[SSK_PREVIEW_DF] is not None
+        st.session_state.get("needs_text_regeneration")
         and not st.session_state[SSK_PREVIEW_DF].empty
     ):
-        latest_row = st.session_state[SSK_PREVIEW_DF].iloc[0]
-        msg = _generate_message_from_row(latest_row)
-
+        row = st.session_state[SSK_PREVIEW_DF].iloc[0]
+        msg = _generate_message_from_row(row)
         st.session_state[SSK_GENERATED_TEXT] = msg
         st.session_state[SSK_EDITED_TEXT] = msg
         st.session_state["needs_text_regeneration"] = False
 
     st.text_area(
-        "Dispatch Message",
+        "Dispatch",
         key=SSK_EDITED_TEXT,
-        height=300,
+        height=260,
         label_visibility="collapsed",
     )
 
     if st.button("💾 APPLY EDIT", key=BTN_APPLY_EDIT, use_container_width=True):
-        df_new = st.session_state["edit_buffer_df"]
-
-        for _, row in df_new.iterrows():
+        for _, row in st.session_state["edit_buffer_df"].iterrows():
             row_id = int(row[DB_PRIMARY_KEY_COL])
             for swg in SWG_IDS:
-                dt_c, a_c, r_c, s_c = SWG_COLS_BY_ID[swg]
+                dt_c,a_c,q_c,s_c = SWG_COLS_BY_ID[swg]
                 if not pd.isna(row.get(dt_c)):
                     save_repository_update_swg_row(
                         row_id=row_id,
                         swg_id=swg,
                         dt=row.get(dt_c),
                         active=row.get(a_c),
-                        reactive=row.get(r_c),
+                        reactive=row.get(q_c),
                         soc=row.get(s_c),
                     )
-
         reset_edit_state()
         st.success("Database updated")
         st.rerun()
 
     if st.button("📋 COPY TEXT", key=BTN_COPY_TEXT, use_container_width=True):
         st.code(st.session_state[SSK_EDITED_TEXT], language="text")
+        st.success("Copied — ready for Telegram / Discord")
 
-# =============================================================================
-# END SECTION 10
-# =============================================================================
 # =============================================================================
 # SECTION 11 — DATA EXPORT & DOWNLOAD (CUSTOM HTML • GREEN THEME)
 # =============================================================================
