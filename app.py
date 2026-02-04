@@ -2605,38 +2605,122 @@ LOGGER.info("🔵 SECTION 9 loaded — BLUE header & clock aligned.")
 # END SECTION 9
 # =============================================================================
 # =============================================================================
-# SECTION 10 — FULL DASHBOARD UI (DISPATCH FORMAT v2 • VALIDATED)
+# SECTION 10 — FULL DASHBOARD UI (DISPATCH FORMAT v2 • PC TIMESTAMP • PREMIUM)
 # =============================================================================
 
 # =============================================================================
-# 10.0 — LOCAL UI CSS (UNCHANGED)
+# 10.0 — LOCAL UI CSS (SECTION-SCOPED)
 # =============================================================================
 st.markdown("""
 <style>
-.swg-bar{border-radius:16px;padding:14px;margin-bottom:14px;
-box-shadow:0 14px 34px rgba(0,0,0,.45)}
+/* =========================================================
+   SECTION HEADER — GREEN / LOW HEIGHT
+   ========================================================= */
+.pd-section-green {
+    background: linear-gradient(
+        135deg,
+        rgba(22,163,74,0.95),
+        rgba(5,46,22,0.92)
+    );
+    border-radius: 16px;
+    border: 1px solid rgba(34,197,94,0.55);
+    box-shadow:
+        0 10px 26px rgba(0,0,0,0.45),
+        inset 0 0 0 1px rgba(34,197,94,0.30);
+    padding: 10px 14px;      /* 👈 lower height */
+    margin-bottom: 14px;
+}
+
+.pd-section-green h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: .4px;
+    color: #ecfdf5 !important;
+}
+
+.pd-section-green small {
+    display: block;
+    margin-top: 2px;
+    font-size: 11px;
+    color: rgba(220,252,231,0.85) !important;
+}
+
+/* =========================================================
+   SWG INPUT BARS
+   ========================================================= */
+.swg-bar{
+    border-radius:16px;
+    padding:14px;
+    margin-bottom:14px;
+    box-shadow:0 14px 34px rgba(0,0,0,.45)
+}
 .swg-green{background:linear-gradient(135deg,#064e3b,#22c55e)}
 .swg-blue{background:linear-gradient(135deg,#1e3a8a,#3b82f6)}
 .swg-orange{background:linear-gradient(135deg,#7c2d12,#fb923c)}
-.swg-title{font-weight:900;letter-spacing:.4px;margin-bottom:8px}
+.swg-title{
+    font-weight:900;
+    letter-spacing:.4px;
+    margin-bottom:8px
+}
+
+/* =========================================================
+   DISPATCH PANEL (GRAY • NON-STREAMLIT LOOK)
+   ========================================================= */
+.pd-dispatch-panel {
+    background: linear-gradient(
+        180deg,
+        rgba(60,60,60,0.92),
+        rgba(35,35,35,0.96)
+    );
+    border-radius: 16px;
+    border: 1px solid rgba(180,180,180,0.25);
+    box-shadow: 0 18px 40px rgba(0,0,0,0.65);
+    padding: 14px 16px;
+}
+
+.pd-dispatch-title {
+    font-weight: 900;
+    letter-spacing: .4px;
+    margin-bottom: 8px;
+    color: #e5e7eb;
+}
+
+.pd-dispatch-textarea textarea {
+    background: rgba(20,20,20,0.95) !important;
+    color: #e5e7eb !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(200,200,200,0.25) !important;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;
+    font-size: 13px !important;
+    line-height: 1.45 !important;
+}
+
+.pd-dispatch-textarea textarea:focus {
+    border-color: #9ca3af !important;
+    box-shadow: 0 0 0 3px rgba(156,163,175,0.35) !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
 # =============================================================================
-# 10.1 — SAFE VALIDATION HELPERS (STRICT)
+# 10.1 — COMPUTER TIMESTAMP ONLY
+# =============================================================================
+def _now_db_timestamp_local() -> str:
+    return safe_local_now().strftime(DT_STORAGE_FORMAT)
+
+# =============================================================================
+# 10.2 — STRICT UI VALIDATION
 # =============================================================================
 def _validate_numeric_ui(name: str, value, vmin: float, vmax: float):
     if value is None or str(value).strip() == "":
         return f"{name} is required"
-
     try:
         v = float(value)
     except Exception:
         return f"{name} must be numeric"
-
     if v < vmin or v > vmax:
         return f"{name} out of range ({vmin} → {vmax})"
-
     return None
 
 
@@ -2647,17 +2731,13 @@ def _validate_swg_inputs(a, q, s):
     errors.append(_validate_numeric_ui("SOC", s, 0, 100))
     return [e for e in errors if e]
 
-
 # =============================================================================
-# 10.2 — TODAY TABLE PREVIEW (DEFENSIVE)
+# 10.3 — LOAD TODAY PREVIEW
 # =============================================================================
-def _load_today_preview_df(dt_str: str) -> pd.DataFrame:
-    if not dt_str:
-        return pd.DataFrame()
-
+def _load_today_preview_df() -> pd.DataFrame:
     try:
         start, end = get_today_range_strings()
-        table = resolve_yearly_table_name(dt_str)
+        table = resolve_current_year_table_name()
 
         sql = f"""
         SELECT *
@@ -2672,14 +2752,12 @@ def _load_today_preview_df(dt_str: str) -> pd.DataFrame:
 
         rows = fetch_all(sql, (start, end, start, end, start, end))
         return pd.DataFrame(rows)
-
     except Exception as exc:
         st.error(f"Preview load failed: {exc}")
         return pd.DataFrame()
 
-
 # =============================================================================
-# 10.3 — DISPATCH MESSAGE FORMAT (SAFE)
+# 10.4 — DISPATCH MESSAGE GENERATOR
 # =============================================================================
 def _generate_message_from_row(row: pd.Series) -> str:
     lines = ["START"]
@@ -2707,31 +2785,27 @@ def _generate_message_from_row(row: pd.Series) -> str:
         total_q += q
 
         swg_no = swg.replace("SWG", "SWG0")
-
-        lines.append(
-            f"#{swg_no}: "
-            f"P={p:g}Mw, Q={q:g}Mvar, SOC={soc:g}%"
-        )
+        lines.append(f"#{swg_no}: P={p:g}Mw, Q={q:g}Mvar, SOC={soc:g}%")
 
     lines.append("")
     lines.append(f"#TOTAL:P={total_p:g}Mw, Q={total_q:g}Mvar")
+
     return "\n".join(lines)
 
-
 # =============================================================================
-# 10.4 — SECTION HEADER
+# 10.5 — SECTION HEADER (GREEN • LOW HEIGHT)
 # =============================================================================
 st.markdown("""
-<div class="pd-card">
-<h3>🧾 INPUT DATA PANELS — SWG1 / SWG2 / SWG3</h3>
-<small>TODAY ONLY • QUEUE SAFE • DATABASE BACKED</small>
+<div class="pd-section-green">
+  <h3>🧾 INPUT DATA PANELS — SWG1 / SWG2 / SWG3</h3>
+  <small>PC TIMESTAMP • TODAY ONLY • QUEUE SAFE</small>
 </div>
 """, unsafe_allow_html=True)
 
 left, right = st.columns([3.2, 1.6], gap="large")
 
 # =============================================================================
-# LEFT — INPUT + TABLE
+# LEFT — INPUT + TABLE PREVIEW
 # =============================================================================
 with left:
     c1, c2, c3 = st.columns(3, gap="medium")
@@ -2752,23 +2826,18 @@ with left:
             if errors:
                 msg_box.error(" ❌ ".join(errors))
             else:
-                try:
-                    save_repository_add_swg_row(
-                        swg_id=swg,
-                        dt=st.session_state[SSK_INPUT_DATETIME],
-                        active=float(a),
-                        reactive=float(q),
-                        soc=float(s),
-                    )
-
-                    reset_insert_inputs()
-                    st.session_state["needs_preview_refresh"] = True
-                    st.session_state["needs_text_regeneration"] = True
-                    msg_box.success(f"✅ {label} saved")
-                    st.rerun()
-
-                except Exception as exc:
-                    msg_box.error(f"❌ Failed: {exc}")
+                save_repository_add_swg_row(
+                    swg_id=swg,
+                    dt=_now_db_timestamp_local(),
+                    active=float(a),
+                    reactive=float(q),
+                    soc=float(s),
+                )
+                reset_insert_inputs()
+                st.session_state["needs_preview_refresh"] = True
+                st.session_state["needs_text_regeneration"] = True
+                msg_box.success(f"✅ {label} saved")
+                st.rerun()
 
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -2782,12 +2851,14 @@ with left:
         render_swg_bar("SWG3","SWG03","swg-orange",
                        SSK_INPUT_SWG3_ACTIVE,SSK_INPUT_SWG3_REACTIVE,SSK_INPUT_SWG3_SOC,BTN_ADD_SWG3)
 
-    # ---------------- TABLE PREVIEW ----------------
-    st.markdown("<div class='pd-card-tight'><b>📊 TABLE PREVIEW — TODAY (DB)</b></div>",
-                unsafe_allow_html=True)
+    st.markdown("""
+    <div class="pd-card-tight">
+      <b>📊 TABLE PREVIEW — TODAY (DB)</b>
+    </div>
+    """, unsafe_allow_html=True)
 
     if st.session_state.get("needs_preview_refresh", True):
-        df = _load_today_preview_df(st.session_state[SSK_INPUT_DATETIME])
+        df = _load_today_preview_df()
         st.session_state[SSK_PREVIEW_DF] = df
         st.session_state["edit_buffer_df"] = df.copy()
         st.session_state["needs_preview_refresh"] = False
@@ -2798,21 +2869,22 @@ with left:
     else:
         edited = st.data_editor(
             st.session_state["edit_buffer_df"],
-            num_rows="fixed",
             use_container_width=True,
+            num_rows="fixed",
             height=280,
         )
         if not edited.equals(st.session_state["edit_buffer_df"]):
             st.session_state["edit_buffer_df"] = edited
             st.session_state["has_unsaved_edits"] = True
 
-
 # =============================================================================
-# RIGHT — MESSAGE / APPLY / COPY
+# RIGHT — GRAY DISPATCH PANEL (PREMIUM)
 # =============================================================================
 with right:
-    st.markdown("<div class='pd-card-tight'><b>📝 MESSAGE SUMMARY & EDIT</b></div>",
-                unsafe_allow_html=True)
+    st.markdown("""
+    <div class="pd-dispatch-panel">
+      <div class="pd-dispatch-title">📝 MESSAGE SUMMARY & EDIT</div>
+    """, unsafe_allow_html=True)
 
     if (
         st.session_state.get("needs_text_regeneration")
@@ -2824,13 +2896,20 @@ with right:
         st.session_state[SSK_EDITED_TEXT] = msg
         st.session_state["needs_text_regeneration"] = False
 
-    st.text_area("Dispatch", key=SSK_EDITED_TEXT, height=260, label_visibility="collapsed")
+    st.markdown('<div class="pd-dispatch-textarea">', unsafe_allow_html=True)
+    st.text_area(
+        "Dispatch",
+        key=SSK_EDITED_TEXT,
+        height=260,
+        label_visibility="collapsed",
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
 
     if st.button("💾 APPLY EDIT", key=BTN_APPLY_EDIT, use_container_width=True):
         for _, row in st.session_state["edit_buffer_df"].iterrows():
             row_id = int(row[DB_PRIMARY_KEY_COL])
             for swg in SWG_IDS:
-                dt_c,a_c,q_c,s_c = SWG_COLS_BY_ID[swg]
+                dt_c, a_c, q_c, s_c = SWG_COLS_BY_ID[swg]
                 if not pd.isna(row.get(dt_c)):
                     save_repository_update_swg_row(
                         row_id=row_id,
@@ -2848,17 +2927,18 @@ with right:
         st.code(st.session_state[SSK_EDITED_TEXT], language="text")
         st.success("Copied — ready for Telegram / Discord")
 
+    st.markdown("</div>", unsafe_allow_html=True)
+
 # =============================================================================
 # END SECTION 10
 # =============================================================================
-
 # =============================================================================
-# SECTION 11 — DATA EXPORT & DOWNLOAD (CUSTOM HTML • GREEN THEME)
+# SECTION 11 — DATA EXPORT & DOWNLOAD (CUSTOM HTML • BLUE BUTTONS)
 # =============================================================================
 # FEATURES:
 # - TRUE custom UI (NO st.download_button)
 # - CSV / XLSX / JSON
-# - All GREEN buttons
+# - BLUE download buttons
 # - Read-only
 # - TODAY only
 # - Enterprise-grade styling
@@ -2869,24 +2949,26 @@ import io
 import json
 
 # =============================================================================
-# 11.0 — CUSTOM DOWNLOAD CSS (ENTERPRISE GREEN)
+# 11.0 — CUSTOM DOWNLOAD CSS (ENTERPRISE BLUE)
 # =============================================================================
 st.markdown(
     """
     <style>
     /* ============================================================
-       CUSTOM DOWNLOAD BUTTONS
+       DOWNLOAD BUTTON LAYOUT
        ============================================================ */
-
     .dl-row {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 22px;
+        gap: 20px;
         margin-top: 12px;
     }
 
+    /* ============================================================
+       BLUE DOWNLOAD BUTTONS
+       ============================================================ */
     .dl-btn {
-        height: 44px;
+        height: 40px;                 /* 👈 lower height */
         border-radius: 14px;
         display: flex;
         align-items: center;
@@ -2895,21 +2977,21 @@ st.markdown(
 
         font-weight: 900;
         letter-spacing: 0.4px;
-        font-size: 14px;
+        font-size: 13px;
         text-decoration: none !important;
-        color: #ecfdf5 !important;
+        color: #eff6ff !important;
 
         background: linear-gradient(
             180deg,
-            #16a34a,
-            #15803d
+            #2563eb,
+            #1e40af
         );
 
-        border: 1px solid rgba(34,197,94,0.65);
+        border: 1px solid rgba(59,130,246,0.65);
 
         box-shadow:
             0 10px 26px rgba(0,0,0,0.55),
-            inset 0 0 0 1px rgba(34,197,94,0.35);
+            inset 0 0 0 1px rgba(59,130,246,0.35);
 
         transition: all .15s ease;
     }
@@ -2919,11 +3001,11 @@ st.markdown(
         transform: translateY(-1px);
         box-shadow:
             0 14px 32px rgba(0,0,0,0.65),
-            inset 0 0 0 1px rgba(34,197,94,0.55);
+            inset 0 0 0 1px rgba(59,130,246,0.55);
     }
 
     .dl-btn:active {
-        transform: translateY(0);
+        transform: scale(0.98);
         filter: brightness(.97);
     }
     </style>
@@ -2963,7 +3045,6 @@ def _load_today_export_df() -> pd.DataFrame:
     ]
     return df[cols]
 
-
 # =============================================================================
 # 11.2 — FILE BUILDERS (PURE)
 # =============================================================================
@@ -2995,13 +3076,12 @@ def _build_xlsx_bytes(df: pd.DataFrame) -> bytes:
 
     return buf.getvalue()
 
-
 # =============================================================================
-# 11.3 — SECTION HEADER
+# 11.3 — SECTION HEADER (GREEN • LOW HEIGHT)
 # =============================================================================
 st.markdown(
     """
-    <div class="pd-card">
+    <div class="pd-section-green">
       <h3>⬇️ DATA EXPORT — TODAY</h3>
       <small>PURE HTML • CSV / XLSX / JSON • READ-ONLY</small>
     </div>
@@ -3030,7 +3110,7 @@ else:
     ).decode()
 
     # =============================================================================
-    # 11.5 — CUSTOM DOWNLOAD BUTTONS (HTML)
+    # 11.5 — CUSTOM DOWNLOAD BUTTONS (BLUE)
     # =============================================================================
     st.markdown(
         f"""
@@ -3069,37 +3149,21 @@ else:
         unsafe_allow_html=True,
     )
 
-LOGGER.info("⬇️ SECTION 11 loaded — CUSTOM HTML download ready.")
+LOGGER.info("⬇️ SECTION 11 loaded — BLUE download buttons ready.")
 # =============================================================================
 # END SECTION 11
 # =============================================================================
-
 # =============================================================================
 # SECTION 12 — EDITABLE DATA (DASHBOARD ↔ DB SYNC)
 # (FINAL • TODAY ONLY • EDIT SAFE • ENTERPRISE)
 # =============================================================================
-# PURPOSE:
-# - Allow operator to EDIT today’s data directly
-# - Changes update BOTH:
-#     ✅ SQLite database
-#     ✅ Dashboard state
-# - Edits affect:
-#     • Preview
-#     • Dispatch message
-#     • Downloaded files (Section 11)
-#
-# HARD RULES:
-# ❌ No schema changes
-# ❌ No historical edits
-# ❌ No silent DB writes
-# =============================================================================
 
 # =============================================================================
-# 12.1 — Section Header
+# 12.1 — Section Header (GREEN • LOW HEIGHT)
 # =============================================================================
 st.markdown(
     """
-    <div class="pd-card">
+    <div class="pd-section-green">
       <h3>✏️ EDIT TODAY DATA — LIVE SYNC</h3>
       <small>
         Dashboard ↔ Database • TODAY ONLY • Explicit Apply Required
@@ -3140,13 +3204,11 @@ def _load_today_editable_df() -> pd.DataFrame:
 
     df = pd.DataFrame(rows)
 
-    # Enforce column order
     ordered_cols = [DB_PRIMARY_KEY_COL] + [
         c for c in SWG_WIDE_COLS if c in df.columns
     ]
 
     return df[ordered_cols]
-
 
 # =============================================================================
 # 12.3 — Initialize Edit Buffer (Rerun Safe)
@@ -3209,11 +3271,9 @@ with apply_col:
             for swg in SWG_IDS:
                 dt_c, a_c, r_c, s_c = SWG_COLS_BY_ID[swg]
 
-                # Only update if this SWG exists in this row
                 if pd.isna(new_row.get(dt_c)):
                     continue
 
-                # Detect field-level changes
                 changed = False
                 for col in (dt_c, a_c, r_c, s_c):
                     if not pd.isna(new_row[col]) or not pd.isna(old_row[col]):
@@ -3235,11 +3295,9 @@ with apply_col:
 
                 updated_rows += 1
 
-        # Reset state
         st.session_state["editable_df_original"] = df_new.copy()
         st.session_state["has_unsaved_edits"] = False
 
-        # Force refresh downstream sections
         st.session_state["needs_preview_refresh"] = True
         st.session_state["needs_text_regeneration"] = True
 
