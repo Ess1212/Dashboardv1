@@ -1,5 +1,5 @@
 # ===============================
-# CORE STREAMLIT APP
+# CORE STREAMLIT
 # ===============================
 streamlit>=1.32.0
 
@@ -15,11 +15,13 @@ numpy>=1.24.0
 plotly>=5.18.0
 
 # ===============================
-# DATABASE (SQLite)
+# EXCEL EXPORT (CRITICAL)
 # ===============================
-python-dateutil>=2.8.2
+openpyxl>=3.1.2
+xlsxwriter>=3.1.9
 
 # ===============================
-# UTILITIES / SAFETY
+# DATE / TIME
 # ===============================
+python-dateutil>=2.8.2
 pytz>=2023.3
