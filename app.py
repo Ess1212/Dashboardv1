@@ -2605,11 +2605,11 @@ LOGGER.info("🔵 SECTION 9 loaded — BLUE header & clock aligned.")
 # END SECTION 9
 # =============================================================================
 # =============================================================================
-# SECTION 10 — FULL DASHBOARD UI (DISPATCH FORMAT v2)
+# SECTION 10 — FULL DASHBOARD UI (DISPATCH FORMAT v2 • VALIDATED)
 # =============================================================================
 
 # =============================================================================
-# 10.0 — LOCAL UI CSS
+# 10.0 — LOCAL UI CSS (UNCHANGED)
 # =============================================================================
 st.markdown("""
 <style>
@@ -2623,16 +2623,34 @@ box-shadow:0 14px 34px rgba(0,0,0,.45)}
 """, unsafe_allow_html=True)
 
 # =============================================================================
-# 10.1 — SAFE HELPERS
+# 10.1 — SAFE VALIDATION HELPERS (STRICT)
 # =============================================================================
-def _safe_float(v):
+def _validate_numeric_ui(name: str, value, vmin: float, vmax: float):
+    if value is None or str(value).strip() == "":
+        return f"{name} is required"
+
     try:
-        s = str(v).strip()
-        return None if s == "" else float(s)
+        v = float(value)
     except Exception:
-        return None
+        return f"{name} must be numeric"
+
+    if v < vmin or v > vmax:
+        return f"{name} out of range ({vmin} → {vmax})"
+
+    return None
 
 
+def _validate_swg_inputs(a, q, s):
+    errors = []
+    errors.append(_validate_numeric_ui("Active Power", a, -150, 150))
+    errors.append(_validate_numeric_ui("Reactive Power", q, -150, 150))
+    errors.append(_validate_numeric_ui("SOC", s, 0, 100))
+    return [e for e in errors if e]
+
+
+# =============================================================================
+# 10.2 — TODAY TABLE PREVIEW (DEFENSIVE)
+# =============================================================================
 def _load_today_preview_df(dt_str: str) -> pd.DataFrame:
     if not dt_str:
         return pd.DataFrame()
@@ -2655,23 +2673,18 @@ def _load_today_preview_df(dt_str: str) -> pd.DataFrame:
         rows = fetch_all(sql, (start, end, start, end, start, end))
         return pd.DataFrame(rows)
 
-    except Exception as e:
-        st.error(f"Preview load failed: {e}")
+    except Exception as exc:
+        st.error(f"Preview load failed: {exc}")
         return pd.DataFrame()
 
 
 # =============================================================================
-# 10.2 — DISPATCH MESSAGE FORMAT (NEW)
+# 10.3 — DISPATCH MESSAGE FORMAT (SAFE)
 # =============================================================================
 def _generate_message_from_row(row: pd.Series) -> str:
     lines = ["START"]
 
-    dt = (
-        row.get("SWG1_DateTime")
-        or row.get("SWG2_DateTime")
-        or row.get("SWG3_DateTime")
-    )
-
+    dt = row.get("SWG1_DateTime") or row.get("SWG2_DateTime") or row.get("SWG3_DateTime")
     if not dt:
         return ""
 
@@ -2683,7 +2696,6 @@ def _generate_message_from_row(row: pd.Series) -> str:
 
     for swg in SWG_IDS:
         dt_c, a_c, q_c, s_c = SWG_COLS_BY_ID[swg]
-
         if pd.isna(row.get(dt_c)):
             continue
 
@@ -2698,22 +2710,16 @@ def _generate_message_from_row(row: pd.Series) -> str:
 
         lines.append(
             f"#{swg_no}: "
-            f"P={int(p) if p.is_integer() else p}Mw, "
-            f"Q={int(q) if q.is_integer() else q}Mvar, "
-            f"SOC={int(soc) if soc.is_integer() else soc}%"
+            f"P={p:g}Mw, Q={q:g}Mvar, SOC={soc:g}%"
         )
 
     lines.append("")
-    lines.append(
-        f"#TOTAL:P={int(total_p) if total_p.is_integer() else total_p}Mw, "
-        f"Q={int(total_q) if total_q.is_integer() else total_q}Mvar"
-    )
-
+    lines.append(f"#TOTAL:P={total_p:g}Mw, Q={total_q:g}Mvar")
     return "\n".join(lines)
 
 
 # =============================================================================
-# 10.3 — SECTION HEADER
+# 10.4 — SECTION HEADER
 # =============================================================================
 st.markdown("""
 <div class="pd-card">
@@ -2738,18 +2744,31 @@ with left:
         q = st.text_input("Reactive Power (Mvar)", key=kQ)
         s = st.text_input("SOC (%)", key=kS)
 
+        msg_box = st.empty()
+
         if st.button(f"ADD {label}", key=btn, use_container_width=True):
-            save_repository_add_swg_row(
-                swg_id=swg,
-                dt=st.session_state[SSK_INPUT_DATETIME],
-                active=_safe_float(a),
-                reactive=_safe_float(q),
-                soc=_safe_float(s),
-            )
-            reset_insert_inputs()
-            st.session_state["needs_preview_refresh"] = True
-            st.success(f"{label} saved")
-            st.rerun()
+            errors = _validate_swg_inputs(a, q, s)
+
+            if errors:
+                msg_box.error(" ❌ ".join(errors))
+            else:
+                try:
+                    save_repository_add_swg_row(
+                        swg_id=swg,
+                        dt=st.session_state[SSK_INPUT_DATETIME],
+                        active=float(a),
+                        reactive=float(q),
+                        soc=float(s),
+                    )
+
+                    reset_insert_inputs()
+                    st.session_state["needs_preview_refresh"] = True
+                    st.session_state["needs_text_regeneration"] = True
+                    msg_box.success(f"✅ {label} saved")
+                    st.rerun()
+
+                except Exception as exc:
+                    msg_box.error(f"❌ Failed: {exc}")
 
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -2805,12 +2824,7 @@ with right:
         st.session_state[SSK_EDITED_TEXT] = msg
         st.session_state["needs_text_regeneration"] = False
 
-    st.text_area(
-        "Dispatch",
-        key=SSK_EDITED_TEXT,
-        height=260,
-        label_visibility="collapsed",
-    )
+    st.text_area("Dispatch", key=SSK_EDITED_TEXT, height=260, label_visibility="collapsed")
 
     if st.button("💾 APPLY EDIT", key=BTN_APPLY_EDIT, use_container_width=True):
         for _, row in st.session_state["edit_buffer_df"].iterrows():
@@ -2833,6 +2847,10 @@ with right:
     if st.button("📋 COPY TEXT", key=BTN_COPY_TEXT, use_container_width=True):
         st.code(st.session_state[SSK_EDITED_TEXT], language="text")
         st.success("Copied — ready for Telegram / Discord")
+
+# =============================================================================
+# END SECTION 10
+# =============================================================================
 
 # =============================================================================
 # SECTION 11 — DATA EXPORT & DOWNLOAD (CUSTOM HTML • GREEN THEME)
