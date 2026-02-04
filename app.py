@@ -3055,3 +3055,205 @@ LOGGER.info("⬇️ SECTION 11 loaded — CUSTOM HTML download ready.")
 # =============================================================================
 # END SECTION 11
 # =============================================================================
+
+# =============================================================================
+# SECTION 12 — EDITABLE DATA (DASHBOARD ↔ DB SYNC)
+# (FINAL • TODAY ONLY • EDIT SAFE • ENTERPRISE)
+# =============================================================================
+# PURPOSE:
+# - Allow operator to EDIT today’s data directly
+# - Changes update BOTH:
+#     ✅ SQLite database
+#     ✅ Dashboard state
+# - Edits affect:
+#     • Preview
+#     • Dispatch message
+#     • Downloaded files (Section 11)
+#
+# HARD RULES:
+# ❌ No schema changes
+# ❌ No historical edits
+# ❌ No silent DB writes
+# =============================================================================
+
+# =============================================================================
+# 12.1 — Section Header
+# =============================================================================
+st.markdown(
+    """
+    <div class="pd-card">
+      <h3>✏️ EDIT TODAY DATA — LIVE SYNC</h3>
+      <small>
+        Dashboard ↔ Database • TODAY ONLY • Explicit Apply Required
+      </small>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+# =============================================================================
+# 12.2 — Load Editable Dataset (TODAY ONLY)
+# =============================================================================
+def _load_today_editable_df() -> pd.DataFrame:
+    """
+    Load TODAY data for editing.
+    Read-only query; updates happen via repository.
+    """
+    start, end = get_today_range_strings()
+    table = resolve_yearly_table_name(safe_local_now())
+
+    sql = f"""
+    SELECT *
+    FROM {table}
+    WHERE
+        (SWG1_DateTime BETWEEN ? AND ?)
+     OR (SWG2_DateTime BETWEEN ? AND ?)
+     OR (SWG3_DateTime BETWEEN ? AND ?)
+    ORDER BY {DB_PRIMARY_KEY_COL} ASC;
+    """
+
+    rows = fetch_all(
+        sql,
+        params=(start, end, start, end, start, end),
+    )
+
+    if not rows:
+        return pd.DataFrame()
+
+    df = pd.DataFrame(rows)
+
+    # Enforce column order
+    ordered_cols = [DB_PRIMARY_KEY_COL] + [
+        c for c in SWG_WIDE_COLS if c in df.columns
+    ]
+
+    return df[ordered_cols]
+
+
+# =============================================================================
+# 12.3 — Initialize Edit Buffer (Rerun Safe)
+# =============================================================================
+if "editable_df" not in st.session_state:
+    st.session_state["editable_df"] = _load_today_editable_df()
+
+if "editable_df_original" not in st.session_state:
+    st.session_state["editable_df_original"] = (
+        st.session_state["editable_df"].copy()
+        if st.session_state["editable_df"] is not None
+        else None
+    )
+
+# =============================================================================
+# 12.4 — Empty State
+# =============================================================================
+if st.session_state["editable_df"].empty:
+    st.info("No data available for editing today.")
+    st.stop()
+
+# =============================================================================
+# 12.5 — Editable Data Editor
+# =============================================================================
+edited_df = st.data_editor(
+    st.session_state["editable_df"],
+    use_container_width=True,
+    num_rows="fixed",
+    height=360,
+)
+
+# Detect changes
+if not edited_df.equals(st.session_state["editable_df"]):
+    st.session_state["editable_df"] = edited_df
+    st.session_state["has_unsaved_edits"] = True
+
+# =============================================================================
+# 12.6 — Apply Changes to Database
+# =============================================================================
+st.markdown("<br/>", unsafe_allow_html=True)
+
+apply_col, refresh_col = st.columns([1.2, 1.0])
+
+with apply_col:
+    if st.button(
+        "💾 APPLY CHANGES TO DATABASE",
+        use_container_width=True,
+        disabled=not st.session_state.get("has_unsaved_edits", False),
+    ):
+        df_new = st.session_state["editable_df"]
+        df_old = st.session_state["editable_df_original"]
+
+        updated_rows = 0
+
+        for idx, new_row in df_new.iterrows():
+            old_row = df_old.loc[idx]
+
+            row_id = int(new_row[DB_PRIMARY_KEY_COL])
+
+            for swg in SWG_IDS:
+                dt_c, a_c, r_c, s_c = SWG_COLS_BY_ID[swg]
+
+                # Only update if this SWG exists in this row
+                if pd.isna(new_row.get(dt_c)):
+                    continue
+
+                # Detect field-level changes
+                changed = False
+                for col in (dt_c, a_c, r_c, s_c):
+                    if not pd.isna(new_row[col]) or not pd.isna(old_row[col]):
+                        if normalize_to_none(new_row[col]) != normalize_to_none(old_row[col]):
+                            changed = True
+                            break
+
+                if not changed:
+                    continue
+
+                save_repository_update_swg_row(
+                    row_id=row_id,
+                    swg_id=swg,
+                    dt=new_row[dt_c],
+                    active=new_row[a_c],
+                    reactive=new_row[r_c],
+                    soc=new_row[s_c],
+                )
+
+                updated_rows += 1
+
+        # Reset state
+        st.session_state["editable_df_original"] = df_new.copy()
+        st.session_state["has_unsaved_edits"] = False
+
+        # Force refresh downstream sections
+        st.session_state["needs_preview_refresh"] = True
+        st.session_state["needs_text_regeneration"] = True
+
+        st.success(f"✅ Database updated successfully ({updated_rows} SWG updates)")
+        st.rerun()
+
+with refresh_col:
+    if st.button("🔄 RELOAD FROM DATABASE", use_container_width=True):
+        st.session_state["editable_df"] = _load_today_editable_df()
+        st.session_state["editable_df_original"] = (
+            st.session_state["editable_df"].copy()
+        )
+        st.session_state["has_unsaved_edits"] = False
+        st.success("Reloaded from database")
+        st.rerun()
+
+# =============================================================================
+# 12.7 — Operator Safety Notice
+# =============================================================================
+st.markdown(
+    """
+    <div class="pd-card-tight">
+      ⚠️ <b>Important:</b><br/>
+      • Only TODAY data can be edited<br/>
+      • Changes affect dispatch message & downloads<br/>
+      • Use “Reload” to discard unsaved changes
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+LOGGER.info("✏️ SECTION 12 loaded — editable data fully synchronized.")
+# =============================================================================
+# END SECTION 12
+# =============================================================================
