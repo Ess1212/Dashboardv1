@@ -2541,7 +2541,7 @@ LOGGER.info("🔵 SECTION 9 loaded — BLUE header & clock aligned.")
 # =============================================================================
 # =============================================================================
 # SECTION 10 — FULL DASHBOARD UI
-# (ONE CLICK = ONE ROW • ZERO DEFAULT • TODAY ONLY • FINAL)
+# (ONE CLICK = ONE ROW • ZERO DEFAULT • TODAY ONLY • FINAL • FULL TIME HH:MM:SS)
 # =============================================================================
 
 # =============================================================================
@@ -2604,16 +2604,17 @@ st.markdown(
 )
 
 # =============================================================================
-# 10.1 — CANONICAL PC TIMESTAMP
+# 10.1 — CANONICAL PC TIMESTAMP (FULL SECONDS — SINGLE AUTHORITY)
 # =============================================================================
 def _now_db_timestamp_local() -> str:
     """
     Single authority timestamp for ONE ADD click.
+    Format MUST match DB: YYYY-MM-DD HH:MM:SS
     """
     return safe_local_now().strftime(DT_STORAGE_FORMAT)
 
 # =============================================================================
-# 10.2 — UI NUMERIC VALIDATION (STRICT)
+# 10.2 — UI NUMERIC VALIDATION (STRICT, USER-FACING)
 # =============================================================================
 def _validate_numeric_ui(name: str, value, vmin: float, vmax: float):
     if value is None or str(value).strip() == "":
@@ -2626,6 +2627,7 @@ def _validate_numeric_ui(name: str, value, vmin: float, vmax: float):
         return f"{name} out of range ({vmin} → {vmax})"
     return None
 
+
 def _validate_swg_inputs(a, q, s):
     errors = [
         _validate_numeric_ui("Active", a, LIMIT_ACTIVE_MIN, LIMIT_ACTIVE_MAX),
@@ -2635,13 +2637,14 @@ def _validate_swg_inputs(a, q, s):
     return [e for e in errors if e]
 
 # =============================================================================
-# 10.3 — NORMALIZATION (CRITICAL RULE)
+# 10.3 — NORMALIZATION (ABSOLUTE RULE: NEVER NULL)
 # =============================================================================
 def _normalize_swg_values(a, q, s):
     """
     CORE BUSINESS RULE:
-    - If SWG not entered → force (0,0,0)
+    - Missing input → 0
     - NEVER return None
+    - DB + TEXT must always see numeric values
     """
     if a is None or str(a).strip() == "":
         a = 0
@@ -2653,7 +2656,7 @@ def _normalize_swg_values(a, q, s):
     return float(a), float(q), float(s)
 
 # =============================================================================
-# 10.4 — LOAD TODAY PREVIEW (READ ONLY)
+# 10.4 — LOAD TODAY PREVIEW (READ ONLY • HARD FILTER)
 # =============================================================================
 def _load_today_preview_df() -> pd.DataFrame:
     start, end = get_today_range_strings()
@@ -2686,9 +2689,15 @@ def _load_today_preview_df() -> pd.DataFrame:
     return df[df.apply(_row_is_today, axis=1)].copy()
 
 # =============================================================================
-# 10.5 — DISPATCH MESSAGE BUILDER (ZERO INCLUDED)
+# 10.5 — DISPATCH MESSAGE BUILDER (FULL TIME • COPY SAFE)
 # =============================================================================
 def _generate_message_from_row(row: pd.Series) -> str:
+    """
+    IMPORTANT:
+    - Uses FULL timestamp with seconds
+    - Exactly matches DB value
+    - Copy-safe (no slicing, no formatting loss)
+    """
     lines = ["START"]
 
     dt = (
@@ -2696,17 +2705,19 @@ def _generate_message_from_row(row: pd.Series) -> str:
         or row.get("SWG2_DateTime")
         or row.get("SWG3_DateTime")
     )
+
     if not dt:
         return ""
 
-    lines.append(f"TIME={dt[:16]}")
+    # ✅ FULL TIME WITH SECONDS (FIXED)
+    lines.append(f"TIME={dt}")
     lines.append("")
 
     total_p = 0.0
     total_q = 0.0
 
     for swg in SWG_IDS:
-        dt_c, a_c, q_c, s_c = SWG_COLS_BY_ID[swg]
+        _, a_c, q_c, s_c = SWG_COLS_BY_ID[swg]
 
         p = float(row.get(a_c) or 0)
         q = float(row.get(q_c) or 0)
@@ -2732,7 +2743,7 @@ st.markdown(
     <div class="pd-section-green">
       <h3>🧾 INPUT DATA — SWG1 / SWG2 / SWG3</h3>
       <small>
-        ONE Click = ONE Row • ZERO Default • TODAY ONLY • PC Timestamp
+        ONE Click = ONE Row • ZERO Default • TODAY ONLY • PC Timestamp (HH:MM:SS)
       </small>
     </div>
     """,
@@ -2785,19 +2796,16 @@ with left:
     msg = st.empty()
 
     # -------------------------------------------------------------------------
-    # SINGLE ADD BUTTON — ONE ROW LOGIC
+    # SINGLE ADD BUTTON — ONE ROW LOGIC (TIME LOCKED)
     # -------------------------------------------------------------------------
     if st.button("➕ ADD SWG DATA", width="stretch"):
         now_ts = _now_db_timestamp_local()
         errors = []
-        saved = False
 
-        # ----------------- NORMALIZE ALL SWGs -----------------
         a1n, q1n, s1n = _normalize_swg_values(a1, q1, s1)
         a2n, q2n, s2n = _normalize_swg_values(a2, q2, s2)
         a3n, q3n, s3n = _normalize_swg_values(a3, q3, s3)
 
-        # ----------------- VALIDATE -----------------
         for swg, vals in {
             "SWG1": (a1n, q1n, s1n),
             "SWG2": (a2n, q2n, s2n),
@@ -2810,9 +2818,6 @@ with left:
         if errors:
             msg.error(" ❌ ".join(errors))
         else:
-            # -----------------------------------------------------
-            # INSERT — EXACTLY ONE ROW (FILL_NULL_QUEUE)
-            # -----------------------------------------------------
             row_id = save_repository_add_swg_row(
                 swg_id="SWG1",
                 dt=now_ts,
@@ -2846,7 +2851,7 @@ with left:
             st.rerun()
 
     # -------------------------------------------------------------------------
-    # PREVIEW
+    # PREVIEW TABLE
     # -------------------------------------------------------------------------
     if st.session_state.get("needs_preview_refresh", True):
         df = _load_today_preview_df()
@@ -2865,41 +2870,147 @@ with left:
         )
 
 # =============================================================================
-# RIGHT — DISPATCH PANEL
+# RIGHT — DISPATCH PANEL (COPY + REVIEW PREVIEW)
 # =============================================================================
+
+def render_copy_exact_text_with_preview(text: str):
+    """
+    REAL clipboard copy + visual review preview.
+    - Copies EXACT text
+    - Shows preview BELOW button
+    - No Streamlit rerun
+    """
+    if not isinstance(text, str):
+        text = ""
+
+    safe_text = (
+        text
+        .replace("\\", "\\\\")
+        .replace("`", "\\`")
+        .replace("$", "\\$")
+    )
+
+    st.components.v1.html(
+        f"""
+        <script>
+        function copyAndPreview() {{
+            navigator.clipboard.writeText(`{safe_text}`).then(() => {{
+                const status = document.getElementById("copy_status");
+                const preview = document.getElementById("copy_preview");
+
+                if (status) {{
+                    status.innerText = "Copied ✓";
+                    setTimeout(() => status.innerText = "", 1800);
+                }}
+
+                if (preview) {{
+                    preview.style.display = "block";
+                    preview.textContent = `{safe_text}`;
+                }}
+            }}).catch(() => {{
+                alert("Clipboard copy failed");
+            }});
+        }}
+        </script>
+
+        <div style="margin-top:12px;">
+            <!-- COPY BUTTON -->
+            <button
+                onclick="copyAndPreview()"
+                style="
+                    width:100%;
+                    height:44px;
+                    border-radius:14px;
+                    border:1px solid rgba(120,180,255,0.6);
+                    background:linear-gradient(180deg,#4f46e5,#4338ca);
+                    color:white;
+                    font-weight:900;
+                    letter-spacing:.4px;
+                    cursor:pointer;
+                    box-shadow:0 10px 26px rgba(0,0,0,0.55);
+                "
+            >
+                📋 COPY TEXT
+            </button>
+
+            <!-- STATUS -->
+            <div
+                id="copy_status"
+                style="
+                    margin-top:6px;
+                    text-align:center;
+                    font-size:12px;
+                    color:#bbf7d0;
+                    font-weight:700;
+                    min-height:16px;
+                "
+            ></div>
+
+            <!-- REVIEW PREVIEW (HIDDEN UNTIL COPY) -->
+            <pre
+                id="copy_preview"
+                style="
+                    display:none;
+                    margin-top:10px;
+                    padding:12px;
+                    border-radius:12px;
+                    background:rgba(15,23,42,0.95);
+                    border:1px solid rgba(120,180,255,0.35);
+                    color:#e5e7eb;
+                    font-size:12px;
+                    line-height:1.45;
+                    max-height:200px;
+                    overflow:auto;
+                    white-space:pre-wrap;
+                    box-shadow:0 12px 28px rgba(0,0,0,0.55);
+                "
+            ></pre>
+        </div>
+        """,
+        height=320,
+    )
+
+
+# -----------------------------------------------------------------------------
+# RIGHT PANEL UI
+# -----------------------------------------------------------------------------
 with right:
     st.markdown("<div class='pd-dispatch-panel'>", unsafe_allow_html=True)
 
+    # Auto-generate text if needed
     if (
         st.session_state.get("needs_text_regeneration")
         and not st.session_state[SSK_PREVIEW_DF].empty
     ):
         row = st.session_state[SSK_PREVIEW_DF].iloc[0]
         text = _generate_message_from_row(row)
+
         st.session_state[SSK_GENERATED_TEXT] = text
         st.session_state[SSK_EDITED_TEXT] = text
         st.session_state["needs_text_regeneration"] = False
 
+    # Dispatch editor
     st.markdown("<div class='pd-dispatch-textarea'>", unsafe_allow_html=True)
     st.text_area(
         "Dispatch",
         key=SSK_EDITED_TEXT,
-        height=280,
+        height=260,
         label_visibility="collapsed",
     )
     st.markdown("</div>", unsafe_allow_html=True)
 
-    if st.button("📋 COPY TEXT", width="stretch"):
-        st.code(st.session_state[SSK_EDITED_TEXT], language="text")
-        st.success("Copied")
+    # COPY + REVIEW
+    render_copy_exact_text_with_preview(
+        st.session_state.get(SSK_EDITED_TEXT, "")
+    )
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-LOGGER.info("✅ SECTION 10 loaded — ONE ROW, ZERO DEFAULT, NO NULL.")
+LOGGER.info("📋 RIGHT DISPATCH PANEL loaded — COPY + REVIEW enabled.")
+
 # =============================================================================
 # END SECTION 10
 # =============================================================================
-
 # =============================================================================
 # SECTION 11 — DATA EXPORT & DOWNLOAD
 # (FINAL • TODAY ONLY • READ-ONLY • ENTERPRISE SAFE)
@@ -3415,5 +3526,6 @@ LOGGER.info("✏️ SECTION 12 loaded — TODAY-ONLY edit system locked.")
 # =============================================================================
 # END SECTION 12
 # =============================================================================
+
 
 
