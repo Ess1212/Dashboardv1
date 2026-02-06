@@ -2605,116 +2605,84 @@ LOGGER.info("🔵 SECTION 9 loaded — BLUE header & clock aligned.")
 # END SECTION 9
 # =============================================================================
 # =============================================================================
-# SECTION 10 — FULL DASHBOARD UI (DISPATCH FORMAT v2 • PC TIMESTAMP • PREMIUM)
+# SECTION 10 — FULL DASHBOARD UI
+# (ONE CLICK = ONE ROW • ZERO DEFAULT • TODAY ONLY • FINAL)
 # =============================================================================
 
 # =============================================================================
-# 10.0 — LOCAL UI CSS (SECTION-SCOPED)
+# 10.0 — LOCAL UI CSS (SECTION SCOPED)
 # =============================================================================
-st.markdown("""
-<style>
-/* =========================================================
-   SECTION HEADER — GREEN / LOW HEIGHT
-   ========================================================= */
-.pd-section-green {
-    background: linear-gradient(
-        135deg,
-        rgba(22,163,74,0.95),
-        rgba(5,46,22,0.92)
-    );
-    border-radius: 16px;
-    border: 1px solid rgba(34,197,94,0.55);
-    box-shadow:
-        0 10px 26px rgba(0,0,0,0.45),
-        inset 0 0 0 1px rgba(34,197,94,0.30);
-    padding: 10px 14px;      /* 👈 lower height */
-    margin-bottom: 14px;
-}
+st.markdown(
+    """
+    <style>
+    .pd-section-green {
+        background: linear-gradient(135deg, rgba(22,163,74,0.95), rgba(5,46,22,0.92));
+        border-radius: 16px;
+        border: 1px solid rgba(34,197,94,0.55);
+        box-shadow: 0 10px 26px rgba(0,0,0,0.45);
+        padding: 12px 16px;
+        margin-bottom: 16px;
+    }
+    .pd-section-green h3 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 900;
+        letter-spacing: .4px;
+        color: #ecfdf5 !important;
+    }
+    .pd-section-green small {
+        display: block;
+        margin-top: 4px;
+        font-size: 11px;
+        color: rgba(220,252,231,0.85) !important;
+    }
 
-.pd-section-green h3 {
-    margin: 0;
-    font-size: 15px;
-    font-weight: 900;
-    letter-spacing: .4px;
-    color: #ecfdf5 !important;
-}
+    .swg-bar{
+        border-radius:16px;
+        padding:16px;
+        margin-bottom:16px;
+        box-shadow:0 14px 34px rgba(0,0,0,.45)
+    }
+    .swg-green{background:linear-gradient(135deg,#064e3b,#22c55e)}
+    .swg-blue{background:linear-gradient(135deg,#1e3a8a,#3b82f6)}
+    .swg-orange{background:linear-gradient(135deg,#7c2d12,#fb923c)}
+    .swg-title{font-weight:900;margin-bottom:10px}
 
-.pd-section-green small {
-    display: block;
-    margin-top: 2px;
-    font-size: 11px;
-    color: rgba(220,252,231,0.85) !important;
-}
+    .pd-dispatch-panel {
+        background: linear-gradient(180deg, rgba(60,60,60,0.92), rgba(35,35,35,0.96));
+        border-radius: 16px;
+        border: 1px solid rgba(180,180,180,0.25);
+        box-shadow: 0 18px 40px rgba(0,0,0,0.65);
+        padding: 16px 18px;
+    }
 
-/* =========================================================
-   SWG INPUT BARS
-   ========================================================= */
-.swg-bar{
-    border-radius:16px;
-    padding:14px;
-    margin-bottom:14px;
-    box-shadow:0 14px 34px rgba(0,0,0,.45)
-}
-.swg-green{background:linear-gradient(135deg,#064e3b,#22c55e)}
-.swg-blue{background:linear-gradient(135deg,#1e3a8a,#3b82f6)}
-.swg-orange{background:linear-gradient(135deg,#7c2d12,#fb923c)}
-.swg-title{
-    font-weight:900;
-    letter-spacing:.4px;
-    margin-bottom:8px
-}
-
-/* =========================================================
-   DISPATCH PANEL (GRAY • NON-STREAMLIT LOOK)
-   ========================================================= */
-.pd-dispatch-panel {
-    background: linear-gradient(
-        180deg,
-        rgba(60,60,60,0.92),
-        rgba(35,35,35,0.96)
-    );
-    border-radius: 16px;
-    border: 1px solid rgba(180,180,180,0.25);
-    box-shadow: 0 18px 40px rgba(0,0,0,0.65);
-    padding: 14px 16px;
-}
-
-.pd-dispatch-title {
-    font-weight: 900;
-    letter-spacing: .4px;
-    margin-bottom: 8px;
-    color: #e5e7eb;
-}
-
-.pd-dispatch-textarea textarea {
-    background: rgba(20,20,20,0.95) !important;
-    color: #e5e7eb !important;
-    border-radius: 12px !important;
-    border: 1px solid rgba(200,200,200,0.25) !important;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;
-    font-size: 13px !important;
-    line-height: 1.45 !important;
-}
-
-.pd-dispatch-textarea textarea:focus {
-    border-color: #9ca3af !important;
-    box-shadow: 0 0 0 3px rgba(156,163,175,0.35) !important;
-}
-</style>
-""", unsafe_allow_html=True)
+    .pd-dispatch-textarea textarea {
+        background: rgba(20,20,20,0.95) !important;
+        color: #e5e7eb !important;
+        border-radius: 12px !important;
+        font-family: ui-monospace, monospace !important;
+        font-size: 13px !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 # =============================================================================
-# 10.1 — COMPUTER TIMESTAMP ONLY
+# 10.1 — CANONICAL PC TIMESTAMP
 # =============================================================================
 def _now_db_timestamp_local() -> str:
+    """
+    Single authority timestamp for ONE ADD click.
+    """
     return safe_local_now().strftime(DT_STORAGE_FORMAT)
 
 # =============================================================================
-# 10.2 — STRICT UI VALIDATION
+# 10.2 — UI NUMERIC VALIDATION (STRICT)
 # =============================================================================
 def _validate_numeric_ui(name: str, value, vmin: float, vmax: float):
     if value is None or str(value).strip() == "":
-        return f"{name} is required"
+        return f"{name} required"
     try:
         v = float(value)
     except Exception:
@@ -2723,46 +2691,76 @@ def _validate_numeric_ui(name: str, value, vmin: float, vmax: float):
         return f"{name} out of range ({vmin} → {vmax})"
     return None
 
-
 def _validate_swg_inputs(a, q, s):
-    errors = []
-    errors.append(_validate_numeric_ui("Active Power", a, -150, 150))
-    errors.append(_validate_numeric_ui("Reactive Power", q, -150, 150))
-    errors.append(_validate_numeric_ui("SOC", s, 0, 100))
+    errors = [
+        _validate_numeric_ui("Active", a, LIMIT_ACTIVE_MIN, LIMIT_ACTIVE_MAX),
+        _validate_numeric_ui("Reactive", q, LIMIT_REACTIVE_MIN, LIMIT_REACTIVE_MAX),
+        _validate_numeric_ui("SOC", s, LIMIT_SOC_MIN, LIMIT_SOC_MAX),
+    ]
     return [e for e in errors if e]
 
 # =============================================================================
-# 10.3 — LOAD TODAY PREVIEW
+# 10.3 — NORMALIZATION (CRITICAL RULE)
+# =============================================================================
+def _normalize_swg_values(a, q, s):
+    """
+    CORE BUSINESS RULE:
+    - If SWG not entered → force (0,0,0)
+    - NEVER return None
+    """
+    if a is None or str(a).strip() == "":
+        a = 0
+    if q is None or str(q).strip() == "":
+        q = 0
+    if s is None or str(s).strip() == "":
+        s = 0
+
+    return float(a), float(q), float(s)
+
+# =============================================================================
+# 10.4 — LOAD TODAY PREVIEW (READ ONLY)
 # =============================================================================
 def _load_today_preview_df() -> pd.DataFrame:
-    try:
-        start, end = get_today_range_strings()
-        table = resolve_current_year_table_name()
+    start, end = get_today_range_strings()
+    table = resolve_current_year_table_name()
 
-        sql = f"""
-        SELECT *
-        FROM {table}
-        WHERE
-            (SWG1_DateTime BETWEEN ? AND ?)
-         OR (SWG2_DateTime BETWEEN ? AND ?)
-         OR (SWG3_DateTime BETWEEN ? AND ?)
-        ORDER BY {DB_PRIMARY_KEY_COL} DESC
-        LIMIT 50
-        """
+    sql = f"""
+    SELECT *
+    FROM {table}
+    WHERE
+        (SWG1_DateTime BETWEEN ? AND ?)
+     OR (SWG2_DateTime BETWEEN ? AND ?)
+     OR (SWG3_DateTime BETWEEN ? AND ?)
+    ORDER BY {DB_PRIMARY_KEY_COL} DESC
+    LIMIT 50;
+    """
 
-        rows = fetch_all(sql, (start, end, start, end, start, end))
-        return pd.DataFrame(rows)
-    except Exception as exc:
-        st.error(f"Preview load failed: {exc}")
-        return pd.DataFrame()
+    rows = fetch_all(sql, (start, end, start, end, start, end))
+    df = pd.DataFrame(rows)
+
+    if df.empty:
+        return df
+
+    def _row_is_today(r):
+        for dt_col, *_ in SWG_COLS_BY_ID.values():
+            v = r.get(dt_col)
+            if v and is_today_datetime(v):
+                return True
+        return False
+
+    return df[df.apply(_row_is_today, axis=1)].copy()
 
 # =============================================================================
-# 10.4 — DISPATCH MESSAGE GENERATOR
+# 10.5 — DISPATCH MESSAGE BUILDER (ZERO INCLUDED)
 # =============================================================================
 def _generate_message_from_row(row: pd.Series) -> str:
     lines = ["START"]
 
-    dt = row.get("SWG1_DateTime") or row.get("SWG2_DateTime") or row.get("SWG3_DateTime")
+    dt = (
+        row.get("SWG1_DateTime")
+        or row.get("SWG2_DateTime")
+        or row.get("SWG3_DateTime")
+    )
     if not dt:
         return ""
 
@@ -2774,8 +2772,6 @@ def _generate_message_from_row(row: pd.Series) -> str:
 
     for swg in SWG_IDS:
         dt_c, a_c, q_c, s_c = SWG_COLS_BY_ID[swg]
-        if pd.isna(row.get(dt_c)):
-            continue
 
         p = float(row.get(a_c) or 0)
         q = float(row.get(q_c) or 0)
@@ -2784,79 +2780,139 @@ def _generate_message_from_row(row: pd.Series) -> str:
         total_p += p
         total_q += q
 
-        swg_no = swg.replace("SWG", "SWG0")
-        lines.append(f"#{swg_no}: P={p:g}Mw, Q={q:g}Mvar, SOC={soc:g}%")
+        lines.append(
+            f"#{swg}: P={p:g}Mw, Q={q:g}Mvar, SOC={soc:g}%"
+        )
 
     lines.append("")
-    lines.append(f"#TOTAL:P={total_p:g}Mw, Q={total_q:g}Mvar")
+    lines.append(f"#TOTAL: P={total_p:g}Mw, Q={total_q:g}Mvar")
 
     return "\n".join(lines)
 
 # =============================================================================
-# 10.5 — SECTION HEADER (GREEN • LOW HEIGHT)
+# 10.6 — SECTION HEADER
 # =============================================================================
-st.markdown("""
-<div class="pd-section-green">
-  <h3>🧾 INPUT DATA PANELS — SWG1 / SWG2 / SWG3</h3>
-  <small>PC TIMESTAMP • TODAY ONLY • QUEUE SAFE</small>
-</div>
-""", unsafe_allow_html=True)
+st.markdown(
+    """
+    <div class="pd-section-green">
+      <h3>🧾 INPUT DATA — SWG1 / SWG2 / SWG3</h3>
+      <small>
+        ONE Click = ONE Row • ZERO Default • TODAY ONLY • PC Timestamp
+      </small>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 left, right = st.columns([3.2, 1.6], gap="large")
 
 # =============================================================================
-# LEFT — INPUT + TABLE PREVIEW
+# LEFT — INPUT + PREVIEW
 # =============================================================================
 with left:
     c1, c2, c3 = st.columns(3, gap="medium")
 
-    def render_swg_bar(swg, label, css, kA, kQ, kS, btn):
+    def render_swg_inputs(label, css, kA, kQ, kS):
         st.markdown(f"<div class='swg-bar {css}'>", unsafe_allow_html=True)
         st.markdown(f"<div class='swg-title'>⚡ {label}</div>", unsafe_allow_html=True)
 
-        a = st.text_input("Active Power (MW)", key=kA)
-        q = st.text_input("Reactive Power (Mvar)", key=kQ)
+        a = st.text_input("Active (MW)", key=kA)
+        q = st.text_input("Reactive (Mvar)", key=kQ)
         s = st.text_input("SOC (%)", key=kS)
 
-        msg_box = st.empty()
-
-        if st.button(f"ADD {label}", key=btn, use_container_width=True):
-            errors = _validate_swg_inputs(a, q, s)
-
-            if errors:
-                msg_box.error(" ❌ ".join(errors))
-            else:
-                save_repository_add_swg_row(
-                    swg_id=swg,
-                    dt=_now_db_timestamp_local(),
-                    active=float(a),
-                    reactive=float(q),
-                    soc=float(s),
-                )
-                reset_insert_inputs()
-                st.session_state["needs_preview_refresh"] = True
-                st.session_state["needs_text_regeneration"] = True
-                msg_box.success(f"✅ {label} saved")
-                st.rerun()
-
         st.markdown("</div>", unsafe_allow_html=True)
+        return a, q, s
 
     with c1:
-        render_swg_bar("SWG1","SWG01","swg-green",
-                       SSK_INPUT_SWG1_ACTIVE,SSK_INPUT_SWG1_REACTIVE,SSK_INPUT_SWG1_SOC,BTN_ADD_SWG1)
+        a1, q1, s1 = render_swg_inputs(
+            "SWG01", "swg-green",
+            SSK_INPUT_SWG1_ACTIVE,
+            SSK_INPUT_SWG1_REACTIVE,
+            SSK_INPUT_SWG1_SOC,
+        )
+
     with c2:
-        render_swg_bar("SWG2","SWG02","swg-blue",
-                       SSK_INPUT_SWG2_ACTIVE,SSK_INPUT_SWG2_REACTIVE,SSK_INPUT_SWG2_SOC,BTN_ADD_SWG2)
+        a2, q2, s2 = render_swg_inputs(
+            "SWG02", "swg-blue",
+            SSK_INPUT_SWG2_ACTIVE,
+            SSK_INPUT_SWG2_REACTIVE,
+            SSK_INPUT_SWG2_SOC,
+        )
+
     with c3:
-        render_swg_bar("SWG3","SWG03","swg-orange",
-                       SSK_INPUT_SWG3_ACTIVE,SSK_INPUT_SWG3_REACTIVE,SSK_INPUT_SWG3_SOC,BTN_ADD_SWG3)
+        a3, q3, s3 = render_swg_inputs(
+            "SWG03", "swg-orange",
+            SSK_INPUT_SWG3_ACTIVE,
+            SSK_INPUT_SWG3_REACTIVE,
+            SSK_INPUT_SWG3_SOC,
+        )
 
-    st.markdown("""
-    <div class="pd-card-tight">
-      <b>📊 TABLE PREVIEW — TODAY (DB)</b>
-    </div>
-    """, unsafe_allow_html=True)
+    msg = st.empty()
 
+    # -------------------------------------------------------------------------
+    # SINGLE ADD BUTTON — ONE ROW LOGIC
+    # -------------------------------------------------------------------------
+    if st.button("➕ ADD SWG DATA", width="stretch"):
+        now_ts = _now_db_timestamp_local()
+        errors = []
+        saved = False
+
+        # ----------------- NORMALIZE ALL SWGs -----------------
+        a1n, q1n, s1n = _normalize_swg_values(a1, q1, s1)
+        a2n, q2n, s2n = _normalize_swg_values(a2, q2, s2)
+        a3n, q3n, s3n = _normalize_swg_values(a3, q3, s3)
+
+        # ----------------- VALIDATE -----------------
+        for swg, vals in {
+            "SWG1": (a1n, q1n, s1n),
+            "SWG2": (a2n, q2n, s2n),
+            "SWG3": (a3n, q3n, s3n),
+        }.items():
+            errs = _validate_swg_inputs(*vals)
+            if errs:
+                errors.append(f"{swg}: " + " | ".join(errs))
+
+        if errors:
+            msg.error(" ❌ ".join(errors))
+        else:
+            # -----------------------------------------------------
+            # INSERT — EXACTLY ONE ROW (FILL_NULL_QUEUE)
+            # -----------------------------------------------------
+            row_id = save_repository_add_swg_row(
+                swg_id="SWG1",
+                dt=now_ts,
+                active=a1n,
+                reactive=q1n,
+                soc=s1n,
+            )
+
+            save_repository_update_swg_row(
+                row_id=row_id,
+                swg_id="SWG2",
+                dt=now_ts,
+                active=a2n,
+                reactive=q2n,
+                soc=s2n,
+            )
+
+            save_repository_update_swg_row(
+                row_id=row_id,
+                swg_id="SWG3",
+                dt=now_ts,
+                active=a3n,
+                reactive=q3n,
+                soc=s3n,
+            )
+
+            reset_insert_inputs()
+            st.session_state["needs_preview_refresh"] = True
+            st.session_state["needs_text_regeneration"] = True
+            msg.success("✅ Saved — One Row Created")
+            st.rerun()
+
+    # -------------------------------------------------------------------------
+    # PREVIEW
+    # -------------------------------------------------------------------------
     if st.session_state.get("needs_preview_refresh", True):
         df = _load_today_preview_df()
         st.session_state[SSK_PREVIEW_DF] = df
@@ -2865,83 +2921,61 @@ with left:
         st.session_state["needs_text_regeneration"] = True
 
     if st.session_state[SSK_PREVIEW_DF].empty:
-        st.info("No data yet for today.")
+        st.info("No data today.")
     else:
-        edited = st.data_editor(
-            st.session_state["edit_buffer_df"],
-            use_container_width=True,
-            num_rows="fixed",
-            height=280,
+        st.dataframe(
+            st.session_state[SSK_PREVIEW_DF],
+            height=300,
+            width="stretch",
         )
-        if not edited.equals(st.session_state["edit_buffer_df"]):
-            st.session_state["edit_buffer_df"] = edited
-            st.session_state["has_unsaved_edits"] = True
 
 # =============================================================================
-# RIGHT — GRAY DISPATCH PANEL (PREMIUM)
+# RIGHT — DISPATCH PANEL
 # =============================================================================
 with right:
-    st.markdown("""
-    <div class="pd-dispatch-panel">
-      <div class="pd-dispatch-title">📝 MESSAGE SUMMARY & EDIT</div>
-    """, unsafe_allow_html=True)
+    st.markdown("<div class='pd-dispatch-panel'>", unsafe_allow_html=True)
 
     if (
         st.session_state.get("needs_text_regeneration")
         and not st.session_state[SSK_PREVIEW_DF].empty
     ):
         row = st.session_state[SSK_PREVIEW_DF].iloc[0]
-        msg = _generate_message_from_row(row)
-        st.session_state[SSK_GENERATED_TEXT] = msg
-        st.session_state[SSK_EDITED_TEXT] = msg
+        text = _generate_message_from_row(row)
+        st.session_state[SSK_GENERATED_TEXT] = text
+        st.session_state[SSK_EDITED_TEXT] = text
         st.session_state["needs_text_regeneration"] = False
 
-    st.markdown('<div class="pd-dispatch-textarea">', unsafe_allow_html=True)
+    st.markdown("<div class='pd-dispatch-textarea'>", unsafe_allow_html=True)
     st.text_area(
         "Dispatch",
         key=SSK_EDITED_TEXT,
-        height=260,
+        height=280,
         label_visibility="collapsed",
     )
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
-    if st.button("💾 APPLY EDIT", key=BTN_APPLY_EDIT, use_container_width=True):
-        for _, row in st.session_state["edit_buffer_df"].iterrows():
-            row_id = int(row[DB_PRIMARY_KEY_COL])
-            for swg in SWG_IDS:
-                dt_c, a_c, q_c, s_c = SWG_COLS_BY_ID[swg]
-                if not pd.isna(row.get(dt_c)):
-                    save_repository_update_swg_row(
-                        row_id=row_id,
-                        swg_id=swg,
-                        dt=row.get(dt_c),
-                        active=row.get(a_c),
-                        reactive=row.get(q_c),
-                        soc=row.get(s_c),
-                    )
-        reset_edit_state()
-        st.success("Database updated")
-        st.rerun()
-
-    if st.button("📋 COPY TEXT", key=BTN_COPY_TEXT, use_container_width=True):
+    if st.button("📋 COPY TEXT", width="stretch"):
         st.code(st.session_state[SSK_EDITED_TEXT], language="text")
-        st.success("Copied — ready for Telegram / Discord")
+        st.success("Copied")
 
     st.markdown("</div>", unsafe_allow_html=True)
 
+LOGGER.info("✅ SECTION 10 loaded — ONE ROW, ZERO DEFAULT, NO NULL.")
 # =============================================================================
 # END SECTION 10
 # =============================================================================
+
 # =============================================================================
-# SECTION 11 — DATA EXPORT & DOWNLOAD (CUSTOM HTML • BLUE BUTTONS)
+# SECTION 11 — DATA EXPORT & DOWNLOAD
+# (FINAL • TODAY ONLY • READ-ONLY • ENTERPRISE SAFE)
 # =============================================================================
-# FEATURES:
-# - TRUE custom UI (NO st.download_button)
-# - CSV / XLSX / JSON
-# - BLUE download buttons
-# - Read-only
-# - TODAY only
-# - Enterprise-grade styling
+# GUARANTEES:
+# - EXPORTS ONLY TODAY DATA
+# - READ-ONLY (NO DB WRITE PATH)
+# - HARD FILTER AGAINST HISTORICAL ROWS
+# - CSV / XLSX / JSON SUPPORTED
+# - CUSTOM HTML BLUE BUTTONS
+# - NO deprecated Streamlit parameters
 # =============================================================================
 
 import base64
@@ -2949,36 +2983,39 @@ import io
 import json
 
 # =============================================================================
-# 11.0 — CUSTOM DOWNLOAD CSS (ENTERPRISE BLUE)
+# 11.0 — SECTION-SCOPED CSS (BLUE DOWNLOAD BUTTONS)
 # =============================================================================
 st.markdown(
     """
     <style>
-    /* ============================================================
-       DOWNLOAD BUTTON LAYOUT
-       ============================================================ */
-    .dl-row {
+    /* =========================================================
+       DOWNLOAD GRID
+       ========================================================= */
+    .pd-dl-grid {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 20px;
-        margin-top: 12px;
+        gap: 18px;
+        margin-top: 14px;
+        margin-bottom: 10px;
     }
 
-    /* ============================================================
-       BLUE DOWNLOAD BUTTONS
-       ============================================================ */
-    .dl-btn {
-        height: 40px;                 /* 👈 lower height */
+    /* =========================================================
+       ENTERPRISE BLUE DOWNLOAD BUTTON
+       ========================================================= */
+    .pd-dl-btn {
+        height: 42px;
         border-radius: 14px;
+
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 10px;
 
         font-weight: 900;
-        letter-spacing: 0.4px;
         font-size: 13px;
+        letter-spacing: 0.4px;
         text-decoration: none !important;
+
         color: #eff6ff !important;
 
         background: linear-gradient(
@@ -2996,7 +3033,7 @@ st.markdown(
         transition: all .15s ease;
     }
 
-    .dl-btn:hover {
+    .pd-dl-btn:hover {
         filter: brightness(1.08);
         transform: translateY(-1px);
         box-shadow:
@@ -3004,9 +3041,9 @@ st.markdown(
             inset 0 0 0 1px rgba(59,130,246,0.55);
     }
 
-    .dl-btn:active {
+    .pd-dl-btn:active {
         transform: scale(0.98);
-        filter: brightness(.97);
+        filter: brightness(.96);
     }
     </style>
     """,
@@ -3014,175 +3051,16 @@ st.markdown(
 )
 
 # =============================================================================
-# 11.1 — LOAD TODAY DATA (READ-ONLY)
+# 11.1 — LOAD TODAY EXPORT DATA (STRICT)
 # =============================================================================
 def _load_today_export_df() -> pd.DataFrame:
-    start, end = get_today_range_strings()
-    table = resolve_yearly_table_name(safe_local_now())
-
-    sql = f"""
-    SELECT *
-    FROM {table}
-    WHERE
-        (SWG1_DateTime BETWEEN ? AND ?)
-        OR (SWG2_DateTime BETWEEN ? AND ?)
-        OR (SWG3_DateTime BETWEEN ? AND ?)
-    ORDER BY {DB_PRIMARY_KEY_COL} ASC;
     """
-
-    rows = fetch_all(
-        sql,
-        params=(start, end, start, end, start, end),
-    )
-
-    df = pd.DataFrame(rows)
-
-    if df.empty:
-        return df
-
-    cols = [DB_PRIMARY_KEY_COL] + [
-        c for c in SWG_WIDE_COLS if c in df.columns
-    ]
-    return df[cols]
-
-# =============================================================================
-# 11.2 — FILE BUILDERS (PURE)
-# =============================================================================
-def _build_csv_bytes(df: pd.DataFrame) -> bytes:
-    return df.to_csv(index=False).encode("utf-8")
-
-
-def _build_json_bytes(df: pd.DataFrame) -> bytes:
-    return json.dumps(
-        df.to_dict(orient="records"),
-        indent=2,
-        default=str,
-    ).encode("utf-8")
-
-
-def _build_xlsx_bytes(df: pd.DataFrame) -> bytes:
-    buf = io.BytesIO()
-
-    engine = None
-    if AVAILABLE_XLSXWRITER:
-        engine = "xlsxwriter"
-    elif AVAILABLE_OPENPYXL:
-        engine = "openpyxl"
-    else:
-        raise RuntimeError("XLSX export requires xlsxwriter or openpyxl")
-
-    with pd.ExcelWriter(buf, engine=engine) as writer:
-        df.to_excel(writer, index=False, sheet_name="SWG_TODAY")
-
-    return buf.getvalue()
-
-# =============================================================================
-# 11.3 — SECTION HEADER (GREEN • LOW HEIGHT)
-# =============================================================================
-st.markdown(
-    """
-    <div class="pd-section-green">
-      <h3>⬇️ DATA EXPORT — TODAY</h3>
-      <small>PURE HTML • CSV / XLSX / JSON • READ-ONLY</small>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-# =============================================================================
-# 11.4 — PREPARE DOWNLOAD FILES
-# =============================================================================
-df_export = _load_today_export_df()
-
-if df_export.empty:
-    st.info("No data available for download today.")
-else:
-    csv_b64 = base64.b64encode(
-        _build_csv_bytes(df_export)
-    ).decode()
-
-    json_b64 = base64.b64encode(
-        _build_json_bytes(df_export)
-    ).decode()
-
-    xlsx_b64 = base64.b64encode(
-        _build_xlsx_bytes(df_export)
-    ).decode()
-
-    # =============================================================================
-    # 11.5 — CUSTOM DOWNLOAD BUTTONS (BLUE)
-    # =============================================================================
-    st.markdown(
-        f"""
-        <div class="dl-row">
-
-          <a class="dl-btn"
-             download="SWG_TODAY_{get_today_date().strftime('%Y%m%d')}.csv"
-             href="data:text/csv;base64,{csv_b64}">
-             ⬇️ DOWNLOAD CSV
-          </a>
-
-          <a class="dl-btn"
-             download="SWG_TODAY_{get_today_date().strftime('%Y%m%d')}.xlsx"
-             href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{xlsx_b64}">
-             ⬇️ DOWNLOAD XLSX
-          </a>
-
-          <a class="dl-btn"
-             download="SWG_TODAY_{get_today_date().strftime('%Y%m%d')}.json"
-             href="data:application/json;base64,{json_b64}">
-             ⬇️ DOWNLOAD JSON
-          </a>
-
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
-        f"""
-        <div class="pd-card-tight">
-          <b>Rows:</b> {len(df_export)} &nbsp;|&nbsp;
-          <b>Date:</b> {get_today_date().strftime(DATE_STORAGE_FORMAT)}
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-LOGGER.info("⬇️ SECTION 11 loaded — BLUE download buttons ready.")
-# =============================================================================
-# END SECTION 11
-# =============================================================================
-# =============================================================================
-# SECTION 12 — EDITABLE DATA (DASHBOARD ↔ DB SYNC)
-# (FINAL • TODAY ONLY • EDIT SAFE • ENTERPRISE)
-# =============================================================================
-
-# =============================================================================
-# 12.1 — Section Header (GREEN • LOW HEIGHT)
-# =============================================================================
-st.markdown(
-    """
-    <div class="pd-section-green">
-      <h3>✏️ EDIT TODAY DATA — LIVE SYNC</h3>
-      <small>
-        Dashboard ↔ Database • TODAY ONLY • Explicit Apply Required
-      </small>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-# =============================================================================
-# 12.2 — Load Editable Dataset (TODAY ONLY)
-# =============================================================================
-def _load_today_editable_df() -> pd.DataFrame:
-    """
-    Load TODAY data for editing.
-    Read-only query; updates happen via repository.
+    Load TODAY data only for export.
+    HARD FILTER applied at both SQL and DataFrame level.
+    READ-ONLY operation.
     """
     start, end = get_today_range_strings()
-    table = resolve_yearly_table_name(safe_local_now())
+    table = resolve_current_year_table_name()
 
     sql = f"""
     SELECT *
@@ -3204,6 +3082,21 @@ def _load_today_editable_df() -> pd.DataFrame:
 
     df = pd.DataFrame(rows)
 
+    # -----------------------------------------------------------------
+    # HARD TODAY-ONLY FILTER (DEFENSIVE)
+    # -----------------------------------------------------------------
+    def _row_is_today(r) -> bool:
+        for dt_col, *_ in SWG_COLS_BY_ID.values():
+            v = r.get(dt_col)
+            if v and is_today_datetime(v):
+                return True
+        return False
+
+    df = df[df.apply(_row_is_today, axis=1)].copy()
+
+    if df.empty:
+        return df
+
     ordered_cols = [DB_PRIMARY_KEY_COL] + [
         c for c in SWG_WIDE_COLS if c in df.columns
     ]
@@ -3211,7 +3104,228 @@ def _load_today_editable_df() -> pd.DataFrame:
     return df[ordered_cols]
 
 # =============================================================================
-# 12.3 — Initialize Edit Buffer (Rerun Safe)
+# 11.2 — FILE BUILDERS (PURE / SIDE-EFFECT FREE)
+# =============================================================================
+def _build_csv_bytes(df: pd.DataFrame) -> bytes:
+    """
+    Build CSV bytes (UTF-8).
+    """
+    return df.to_csv(index=False).encode("utf-8")
+
+
+def _build_json_bytes(df: pd.DataFrame) -> bytes:
+    """
+    Build pretty JSON bytes.
+    """
+    return json.dumps(
+        df.to_dict(orient="records"),
+        indent=2,
+        default=str,
+    ).encode("utf-8")
+
+
+def _build_xlsx_bytes(df: pd.DataFrame) -> bytes:
+    """
+    Build XLSX bytes using available engine.
+    """
+    buffer = io.BytesIO()
+
+    engine = None
+    if AVAILABLE_XLSXWRITER:
+        engine = "xlsxwriter"
+    elif AVAILABLE_OPENPYXL:
+        engine = "openpyxl"
+    else:
+        raise RuntimeError("XLSX export requires xlsxwriter or openpyxl")
+
+    with pd.ExcelWriter(buffer, engine=engine) as writer:
+        df.to_excel(
+            writer,
+            index=False,
+            sheet_name="SWG_TODAY",
+        )
+
+    return buffer.getvalue()
+
+# =============================================================================
+# 11.3 — SECTION HEADER (GREEN • LOW HEIGHT)
+# =============================================================================
+st.markdown(
+    """
+    <div class="pd-section-green">
+      <h3>⬇️ DATA EXPORT — TODAY</h3>
+      <small>CSV / XLSX / JSON • READ-ONLY • TODAY ONLY</small>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+# =============================================================================
+# 11.4 — LOAD EXPORT DATASET
+# =============================================================================
+df_export = _load_today_export_df()
+
+if df_export.empty:
+    st.info("No data available for download today.")
+    LOGGER.info("⬇️ SECTION 11 — no data to export.")
+else:
+    # =============================================================================
+    # 11.5 — BUILD FILE PAYLOADS
+    # =============================================================================
+    try:
+        csv_b64 = base64.b64encode(
+            _build_csv_bytes(df_export)
+        ).decode()
+
+        json_b64 = base64.b64encode(
+            _build_json_bytes(df_export)
+        ).decode()
+
+        xlsx_b64 = base64.b64encode(
+            _build_xlsx_bytes(df_export)
+        ).decode()
+
+    except Exception as exc:
+        st.error(f"Export preparation failed: {exc}")
+        LOGGER.error(f"Export build failed: {exc}")
+        st.stop()
+
+    # =============================================================================
+    # 11.6 — CUSTOM HTML DOWNLOAD BUTTONS (BLUE)
+    # =============================================================================
+    today_tag = get_today_date().strftime("%Y%m%d")
+
+    st.markdown(
+        f"""
+        <div class="pd-dl-grid">
+
+          <a class="pd-dl-btn"
+             download="SWG_TODAY_{today_tag}.csv"
+             href="data:text/csv;base64,{csv_b64}">
+             ⬇️ DOWNLOAD CSV
+          </a>
+
+          <a class="pd-dl-btn"
+             download="SWG_TODAY_{today_tag}.xlsx"
+             href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{xlsx_b64}">
+             ⬇️ DOWNLOAD XLSX
+          </a>
+
+          <a class="pd-dl-btn"
+             download="SWG_TODAY_{today_tag}.json"
+             href="data:application/json;base64,{json_b64}">
+             ⬇️ DOWNLOAD JSON
+          </a>
+
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # =============================================================================
+    # 11.7 — EXPORT SUMMARY
+    # =============================================================================
+    st.markdown(
+        f"""
+        <div class="pd-card-tight">
+          <b>Rows:</b> {len(df_export)} &nbsp;|&nbsp;
+          <b>Date:</b> {get_today_date().strftime(DATE_STORAGE_FORMAT)} &nbsp;|&nbsp;
+          <b>Formats:</b> CSV / XLSX / JSON
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    LOGGER.info(
+        f"⬇️ SECTION 11 loaded — {len(df_export)} rows ready for export."
+    )
+
+# =============================================================================
+# END SECTION 11
+# =============================================================================
+# =============================================================================
+# SECTION 12 — EDITABLE DATA (DASHBOARD ↔ DB SYNC)
+# (FINAL • TODAY ONLY • EDIT SAFE • ENTERPRISE GUARANTEED)
+# =============================================================================
+# GUARANTEES:
+# - ONLY TODAY rows can be edited (SQL + DF + UI)
+# - ONLY CHANGED CELLS are updated
+# - NO historical writes possible
+# - Repository TODAY policy is NEVER violated
+# - Explicit APPLY required
+# - Reload discards edits safely
+# =============================================================================
+
+# =============================================================================
+# 12.1 — SECTION HEADER (GREEN • LOW HEIGHT)
+# =============================================================================
+st.markdown(
+    """
+    <div class="pd-section-green">
+      <h3>✏️ EDIT TODAY DATA — LIVE SYNC</h3>
+      <small>
+        TODAY ONLY • Explicit Apply Required • Safe Database Sync
+      </small>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+# =============================================================================
+# 12.2 — LOAD TODAY EDITABLE DATA (HARD FILTER)
+# =============================================================================
+def _load_today_editable_df() -> pd.DataFrame:
+    """
+    Load TODAY data only for editing.
+    HARD FILTER at SQL + DataFrame level.
+    READ-ONLY query.
+    """
+    start, end = get_today_range_strings()
+    table = resolve_current_year_table_name()
+
+    sql = f"""
+    SELECT *
+    FROM {table}
+    WHERE
+        (SWG1_DateTime BETWEEN ? AND ?)
+     OR (SWG2_DateTime BETWEEN ? AND ?)
+     OR (SWG3_DateTime BETWEEN ? AND ?)
+    ORDER BY {DB_PRIMARY_KEY_COL} ASC;
+    """
+
+    rows = fetch_all(
+        sql,
+        params=(start, end, start, end, start, end),
+    )
+
+    if not rows:
+        return pd.DataFrame()
+
+    df = pd.DataFrame(rows)
+
+    # -------------------------------------------------------------------------
+    # HARD TODAY FILTER (DEFENSIVE — LAST LINE OF DEFENSE)
+    # -------------------------------------------------------------------------
+    def _row_is_today(r) -> bool:
+        for dt_col, *_ in SWG_COLS_BY_ID.values():
+            v = r.get(dt_col)
+            if v and is_today_datetime(v):
+                return True
+        return False
+
+    df = df[df.apply(_row_is_today, axis=1)].copy()
+
+    if df.empty:
+        return df
+
+    ordered_cols = [DB_PRIMARY_KEY_COL] + [
+        c for c in SWG_WIDE_COLS if c in df.columns
+    ]
+
+    return df[ordered_cols]
+
+# =============================================================================
+# 12.3 — SESSION STATE INITIALIZATION (RERUN SAFE)
 # =============================================================================
 if "editable_df" not in st.session_state:
     st.session_state["editable_df"] = _load_today_editable_df()
@@ -3219,51 +3333,56 @@ if "editable_df" not in st.session_state:
 if "editable_df_original" not in st.session_state:
     st.session_state["editable_df_original"] = (
         st.session_state["editable_df"].copy()
-        if st.session_state["editable_df"] is not None
-        else None
+        if not st.session_state["editable_df"].empty
+        else pd.DataFrame()
     )
 
 # =============================================================================
-# 12.4 — Empty State
+# 12.4 — EMPTY STATE
 # =============================================================================
 if st.session_state["editable_df"].empty:
     st.info("No data available for editing today.")
+    LOGGER.info("✏️ SECTION 12 — no editable data.")
     st.stop()
 
 # =============================================================================
-# 12.5 — Editable Data Editor
+# 12.5 — RENDER EDITOR (TODAY DATA ONLY)
 # =============================================================================
 edited_df = st.data_editor(
     st.session_state["editable_df"],
-    use_container_width=True,
     num_rows="fixed",
     height=360,
+    width="stretch",
 )
 
-# Detect changes
+# Detect any edit
 if not edited_df.equals(st.session_state["editable_df"]):
     st.session_state["editable_df"] = edited_df
     st.session_state["has_unsaved_edits"] = True
 
 # =============================================================================
-# 12.6 — Apply Changes to Database
+# 12.6 — APPLY / RELOAD CONTROLS
 # =============================================================================
 st.markdown("<br/>", unsafe_allow_html=True)
+apply_col, reload_col = st.columns([1.2, 1.0])
 
-apply_col, refresh_col = st.columns([1.2, 1.0])
-
+# =============================================================================
+# APPLY CHANGES (STRICT DIFF-BASED UPDATE)
+# =============================================================================
 with apply_col:
     if st.button(
         "💾 APPLY CHANGES TO DATABASE",
-        use_container_width=True,
+        width="stretch",
         disabled=not st.session_state.get("has_unsaved_edits", False),
     ):
         df_new = st.session_state["editable_df"]
         df_old = st.session_state["editable_df_original"]
 
-        updated_rows = 0
+        updated_cells = 0
+        updated_rows = set()
 
-        for idx, new_row in df_new.iterrows():
+        for idx in df_new.index:
+            new_row = df_new.loc[idx]
             old_row = df_old.loc[idx]
 
             row_id = int(new_row[DB_PRIMARY_KEY_COL])
@@ -3271,19 +3390,34 @@ with apply_col:
             for swg in SWG_IDS:
                 dt_c, a_c, r_c, s_c = SWG_COLS_BY_ID[swg]
 
+                # Skip SWG slot if no datetime
                 if pd.isna(new_row.get(dt_c)):
                     continue
 
+                # -----------------------------------------------------------------
+                # HARD TODAY GUARD (IMPOSSIBLE TO BYPASS)
+                # -----------------------------------------------------------------
+                if not is_today_datetime(new_row.get(dt_c)):
+                    LOGGER.warning(
+                        f"⛔ BLOCKED non-today edit: row {row_id}, {swg}"
+                    )
+                    continue
+
+                # -----------------------------------------------------------------
+                # Detect CHANGE at CELL LEVEL
+                # -----------------------------------------------------------------
                 changed = False
                 for col in (dt_c, a_c, r_c, s_c):
-                    if not pd.isna(new_row[col]) or not pd.isna(old_row[col]):
-                        if normalize_to_none(new_row[col]) != normalize_to_none(old_row[col]):
-                            changed = True
-                            break
+                    if normalize_to_none(new_row[col]) != normalize_to_none(old_row[col]):
+                        changed = True
+                        break
 
                 if not changed:
                     continue
 
+                # -----------------------------------------------------------------
+                # SAFE UPDATE (REPOSITORY GUARANTEED)
+                # -----------------------------------------------------------------
                 save_repository_update_swg_row(
                     row_id=row_id,
                     swg_id=swg,
@@ -3293,43 +3427,56 @@ with apply_col:
                     soc=new_row[s_c],
                 )
 
-                updated_rows += 1
+                updated_cells += 1
+                updated_rows.add(row_id)
 
+        # ---------------------------------------------------------------------
+        # POST-UPDATE STATE RESET
+        # ---------------------------------------------------------------------
         st.session_state["editable_df_original"] = df_new.copy()
         st.session_state["has_unsaved_edits"] = False
-
         st.session_state["needs_preview_refresh"] = True
         st.session_state["needs_text_regeneration"] = True
 
-        st.success(f"✅ Database updated successfully ({updated_rows} SWG updates)")
+        st.success(
+            f"✅ Database updated — {len(updated_rows)} rows, {updated_cells} SWG updates"
+        )
+        LOGGER.info(
+            f"✏️ SECTION 12 — updated rows: {len(updated_rows)}, cells: {updated_cells}"
+        )
         st.rerun()
 
-with refresh_col:
-    if st.button("🔄 RELOAD FROM DATABASE", use_container_width=True):
+# =============================================================================
+# RELOAD FROM DATABASE (DISCARD EDITS)
+# =============================================================================
+with reload_col:
+    if st.button("🔄 RELOAD FROM DATABASE", width="stretch"):
         st.session_state["editable_df"] = _load_today_editable_df()
         st.session_state["editable_df_original"] = (
             st.session_state["editable_df"].copy()
         )
         st.session_state["has_unsaved_edits"] = False
         st.success("Reloaded from database")
+        LOGGER.info("✏️ SECTION 12 — reload requested.")
         st.rerun()
 
 # =============================================================================
-# 12.7 — Operator Safety Notice
+# 12.7 — OPERATOR SAFETY NOTICE
 # =============================================================================
 st.markdown(
     """
     <div class="pd-card-tight">
-      ⚠️ <b>Important:</b><br/>
-      • Only TODAY data can be edited<br/>
-      • Changes affect dispatch message & downloads<br/>
-      • Use “Reload” to discard unsaved changes
+      ⚠️ <b>Operator Notice</b><br/>
+      • Only TODAY records can be edited<br/>
+      • Historical data is permanently read-only<br/>
+      • Use “Reload” to discard unsaved changes<br/>
+      • All updates are audited by row ID
     </div>
     """,
     unsafe_allow_html=True,
 )
 
-LOGGER.info("✏️ SECTION 12 loaded — editable data fully synchronized.")
+LOGGER.info("✏️ SECTION 12 loaded — TODAY-ONLY edit system locked.")
 # =============================================================================
 # END SECTION 12
 # =============================================================================
