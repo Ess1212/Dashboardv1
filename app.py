@@ -1,17 +1,14 @@
 # =============================================================================
 # SECTION 1 — Application Bootstrap & Runtime Guards
-# (NEW VERSION • Single-Page Dashboard • Enterprise-Safe • Streamlit)
+# (FINAL • Single-Page Dashboard • Enterprise-Safe • TIMEZONE FIXED)
 # =============================================================================
 # PURPOSE:
-# - Initialize the application runtime safely
+# - Initialize application runtime safely
 # - Declare ALL imports used anywhere in the app
-# - Enforce strict architecture rules:
-#     ✅ Single file only (app.py)
-#     ✅ Python minimum version
-#     ✅ SQLite availability
-#     ✅ Streamlit session_state existence
+# - Enforce strict architecture rules
 # - Configure logging (rerun-safe)
 # - Configure Streamlit page settings (ONLY UI allowed here)
+# - DEFINE CANONICAL TIME AUTHORITY (Asia/Phnom_Penh)
 #
 # ABSOLUTE RULES (SECTION 1):
 # ❌ NO database connections
@@ -20,9 +17,9 @@
 # ❌ NO st.session_state mutation
 # ❌ NO UI rendering (EXCEPT st.set_page_config)
 #
-# OUTPUT GUARANTEE:
+# GUARANTEE:
 # ✅ This section can run ALONE
-# ✅ Later sections will not fail due to missing imports
+# ✅ All later sections inherit SAFE runtime + correct time
 # =============================================================================
 
 from __future__ import annotations
@@ -47,6 +44,7 @@ import traceback
 import contextlib
 import tempfile
 import sqlite3
+
 from dataclasses import dataclass
 from datetime import datetime, date, timedelta
 from typing import (
@@ -62,7 +60,15 @@ from typing import (
 )
 
 # =============================================================================
-# 1.2 — Third-Party Core Imports
+# 1.2 — TIMEZONE AUTHORITY (CRITICAL FIX)
+# =============================================================================
+from zoneinfo import ZoneInfo  # Python 3.9+ built-in
+
+DEFAULT_TIMEZONE_LABEL: str = "Asia/Phnom_Penh"
+APP_TIMEZONE = ZoneInfo(DEFAULT_TIMEZONE_LABEL)
+
+# =============================================================================
+# 1.3 — Third-Party Core Imports
 # =============================================================================
 import streamlit as st
 import pandas as pd
@@ -72,21 +78,20 @@ import numpy as np
 import plotly.graph_objects as go
 
 # =============================================================================
-# 1.3 — Optional Libraries (Fail Gracefully)
+# 1.4 — Optional Libraries (Fail Gracefully)
 # =============================================================================
-AVAILABLE_REPORTLAB: bool = False
-AVAILABLE_OPENPYXL: bool = False
-AVAILABLE_XLSXWRITER: bool = False
-AVAILABLE_KALEIDO: bool = False
-AVAILABLE_MATPLOTLIB: bool = False
+AVAILABLE_REPORTLAB = False
+AVAILABLE_OPENPYXL = False
+AVAILABLE_XLSXWRITER = False
+AVAILABLE_KALEIDO = False
+AVAILABLE_MATPLOTLIB = False
 
-REPORTLAB_IMPORT_ERROR: Optional[str] = None
-OPENPYXL_IMPORT_ERROR: Optional[str] = None
-XLSXWRITER_IMPORT_ERROR: Optional[str] = None
-KALEIDO_IMPORT_ERROR: Optional[str] = None
-MATPLOTLIB_IMPORT_ERROR: Optional[str] = None
+REPORTLAB_IMPORT_ERROR = None
+OPENPYXL_IMPORT_ERROR = None
+XLSXWRITER_IMPORT_ERROR = None
+KALEIDO_IMPORT_ERROR = None
+MATPLOTLIB_IMPORT_ERROR = None
 
-# ---- PDF (ReportLab) ----
 try:
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib import colors
@@ -99,56 +104,44 @@ try:
         Spacer,
     )
     from reportlab.lib.styles import getSampleStyleSheet
-
     AVAILABLE_REPORTLAB = True
 except Exception as exc:
-    AVAILABLE_REPORTLAB = False
-    REPORTLAB_IMPORT_ERROR = f"{type(exc).__name__}: {exc}"
+    REPORTLAB_IMPORT_ERROR = str(exc)
 
-# ---- Excel engines ----
 try:
-    import openpyxl  # noqa: F401
+    import openpyxl  # noqa
     AVAILABLE_OPENPYXL = True
 except Exception as exc:
-    AVAILABLE_OPENPYXL = False
-    OPENPYXL_IMPORT_ERROR = f"{type(exc).__name__}: {exc}"
+    OPENPYXL_IMPORT_ERROR = str(exc)
 
 try:
-    import xlsxwriter  # noqa: F401
+    import xlsxwriter  # noqa
     AVAILABLE_XLSXWRITER = True
 except Exception as exc:
-    AVAILABLE_XLSXWRITER = False
-    XLSXWRITER_IMPORT_ERROR = f"{type(exc).__name__}: {exc}"
+    XLSXWRITER_IMPORT_ERROR = str(exc)
 
-# ---- Plotly image export ----
 try:
-    import kaleido  # noqa: F401
+    import kaleido  # noqa
     AVAILABLE_KALEIDO = True
 except Exception as exc:
-    AVAILABLE_KALEIDO = False
-    KALEIDO_IMPORT_ERROR = f"{type(exc).__name__}: {exc}"
+    KALEIDO_IMPORT_ERROR = str(exc)
 
-# ---- Matplotlib fallback ----
 try:
-    import matplotlib.pyplot as plt  # noqa: F401
+    import matplotlib.pyplot as plt  # noqa
     AVAILABLE_MATPLOTLIB = True
 except Exception as exc:
-    AVAILABLE_MATPLOTLIB = False
-    MATPLOTLIB_IMPORT_ERROR = f"{type(exc).__name__}: {exc}"
+    MATPLOTLIB_IMPORT_ERROR = str(exc)
 
 # =============================================================================
-# 1.4 — Warning Policy (Quiet but Safe)
+# 1.5 — Warning Policy
 # =============================================================================
-warnings.simplefilter("ignore", category=FutureWarning)
-warnings.simplefilter("ignore", category=UserWarning)
+warnings.simplefilter("ignore", FutureWarning)
+warnings.simplefilter("ignore", UserWarning)
 
 # =============================================================================
-# 1.5 — Logging System (Streamlit Rerun-Safe)
+# 1.6 — Logging System (Streamlit Rerun-Safe)
 # =============================================================================
 def _configure_logging_once() -> logging.Logger:
-    """
-    Configure a single application logger that is safe under Streamlit reruns.
-    """
     logger_name = "SWG_ONEPAGE_DASHBOARD"
     logger = logging.getLogger(logger_name)
 
@@ -160,8 +153,8 @@ def _configure_logging_once() -> logging.Logger:
     if not logger.handlers:
         handler = logging.StreamHandler(sys.stdout)
         formatter = logging.Formatter(
-            fmt="[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
+            "[%(asctime)s] [%(levelname)s] %(message)s",
+            "%Y-%m-%d %H:%M:%S",
         )
         handler.setFormatter(formatter)
         logger.addHandler(handler)
@@ -169,11 +162,10 @@ def _configure_logging_once() -> logging.Logger:
     logger._configured = True  # type: ignore[attr-defined]
     return logger
 
-
 LOGGER = _configure_logging_once()
 
 # =============================================================================
-# 1.6 — Streamlit Page Configuration (ONLY UI ALLOWED HERE)
+# 1.7 — Streamlit Page Configuration (ONLY UI ALLOWED HERE)
 # =============================================================================
 st.set_page_config(
     page_title="SWG Power Dispatch Dashboard",
@@ -183,125 +175,96 @@ st.set_page_config(
 )
 
 # =============================================================================
-# 1.7 — Immutable Application Identity
+# 1.8 — Immutable Application Identity
 # =============================================================================
-APP_NAME: str = "SWG Power Dispatch Dashboard"
-APP_VERSION: str = "4.0.0"
-APP_BUILD_TAG: str = "ONE_PAGE_REDESIGN"
+APP_NAME = "SWG Power Dispatch Dashboard"
+APP_VERSION = "4.0.0"
+APP_BUILD_TAG = "ONE_PAGE_REDESIGN"
 
-APP_DOMAIN: str = "Energy Dispatch Logging"
-APP_RUNTIME: str = "LOCAL_SQLITE_ONLY"
-APP_ARCHITECTURE: str = "SINGLE_FILE_STREAMLIT"
+APP_DOMAIN = "Energy Dispatch Logging"
+APP_RUNTIME = "SQLITE_LOCAL_PERSISTENT"
+APP_ARCHITECTURE = "SINGLE_FILE_STREAMLIT"
 
-COMPANY_NAME: str = "SchneiTech Group"
-COMPANY_SHORT: str = "STG"
+COMPANY_NAME = "SchneiTech Group"
+COMPANY_SHORT = "STG"
 
-BOOT_TIME_UTC: str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+# IMPORTANT: Boot time must use LOCAL BUSINESS TIME
+BOOT_TIME_LOCAL = datetime.now(APP_TIMEZONE).replace(tzinfo=None).strftime(
+    "%Y-%m-%d %H:%M:%S"
+)
 
 # =============================================================================
-# 1.8 — HARD ARCHITECTURE GUARDS (FAIL FAST)
+# 1.9 — HARD ARCHITECTURE GUARDS
 # =============================================================================
 def _guard_single_file_name() -> None:
-    """
-    Enforce that the application is running from 'app.py'.
-    """
     try:
         fname = os.path.basename(__file__)
+        if fname.lower() != "app.py":
+            raise RuntimeError(
+                f"Application must run as app.py (detected {fname})"
+            )
     except Exception:
-        LOGGER.warning("⚠️ __file__ unavailable; cannot strictly enforce filename.")
-        return
+        LOGGER.warning("⚠️ Cannot enforce filename (__file__ unavailable).")
 
-    if fname.lower() != "app.py":
-        raise RuntimeError(
-            "❌ ARCHITECTURE VIOLATION\n"
-            "This application MUST be executed from a single file named 'app.py'.\n"
-            f"Detected filename: {fname}"
-        )
-
-
-def _guard_python_version(min_major: int = 3, min_minor: int = 9) -> None:
-    """
-    Enforce minimum Python version.
-    """
+def _guard_python_version(min_major=3, min_minor=9) -> None:
     if sys.version_info < (min_major, min_minor):
         raise RuntimeError(
-            "❌ PYTHON VERSION TOO LOW\n"
-            f"Required: Python {min_major}.{min_minor}+\n"
-            f"Detected: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+            f"Python {min_major}.{min_minor}+ required "
+            f"(detected {sys.version_info})"
         )
-
 
 def _guard_sqlite_available() -> None:
-    """
-    Ensure sqlite3 is available.
-    """
-    try:
-        _ = sqlite3.sqlite_version
-    except Exception as exc:
-        raise RuntimeError(
-            "❌ SQLITE NOT AVAILABLE\n"
-            f"Error: {type(exc).__name__}: {exc}"
-        )
-
+    _ = sqlite3.sqlite_version
 
 def _guard_streamlit_session_state() -> None:
-    """
-    Ensure Streamlit session_state exists.
-    """
     if not hasattr(st, "session_state"):
-        raise RuntimeError("❌ Streamlit session_state is not available.")
+        raise RuntimeError("Streamlit session_state unavailable")
 
-
-# Execute guards immediately
 _guard_single_file_name()
 _guard_python_version()
 _guard_sqlite_available()
 _guard_streamlit_session_state()
 
 # =============================================================================
-# 1.9 — Database Identity Declaration (NO CONNECTION HERE)
+# 1.10 — Database Identity (NO CONNECTION HERE)
 # =============================================================================
-DB_FILENAME: str = "SWG_DATA.db"
-DB_ENGINE: str = "sqlite"
-DB_SINGLE_FILE_ONLY: bool = True
-
-if DB_FILENAME != "SWG_DATA.db":
-    raise RuntimeError("❌ DB filename must be exactly 'SWG_DATA.db'")
+DB_FILENAME = "SWG_DATA.db"
+DB_ENGINE = "sqlite"
+DB_SINGLE_FILE_ONLY = True
 
 # =============================================================================
-# 1.10 — Canonical DateTime Rules (Global Contract)
+# 1.11 — Datetime Contract (GLOBAL)
 # =============================================================================
-DT_STORAGE_FORMAT: str = "%Y-%m-%d %H:%M:%S"
-DATE_STORAGE_FORMAT: str = "%Y-%m-%d"
-TIME_STORAGE_FORMAT: str = "%H:%M:%S"
-
-DEFAULT_TIMEZONE_LABEL: str = "Asia/Phnom_Penh"
+DT_STORAGE_FORMAT = "%Y-%m-%d %H:%M:%S"
+DATE_STORAGE_FORMAT = "%Y-%m-%d"
+TIME_STORAGE_FORMAT = "%H:%M:%S"
 
 # =============================================================================
-# 1.11 — SWG Identity Constants
+# 1.12 — SWG Identity
 # =============================================================================
 SWG_IDS: Tuple[str, ...] = ("SWG1", "SWG2", "SWG3")
 
 # =============================================================================
-# 1.12 — PURE Helper Utilities (Allowed in Section 1)
+# 1.13 — TIME AUTHORITY FUNCTIONS (FINAL FIX)
 # =============================================================================
-def deep_copy(obj: Any) -> Any:
-    """Pure deep copy helper."""
-    return copy.deepcopy(obj)
-
-
 def safe_local_now() -> datetime:
-    """Return local server datetime."""
-    return datetime.now()
-
+    """
+    Return Asia/Phnom_Penh local time,
+    regardless of server timezone (Streamlit Cloud safe).
+    """
+    return datetime.now(APP_TIMEZONE).replace(tzinfo=None)
 
 def safe_utc_now() -> datetime:
-    """Return UTC datetime."""
+    """Return UTC time (audit/debug only)."""
     return datetime.utcnow()
 
+# =============================================================================
+# 1.14 — PURE HELPERS
+# =============================================================================
+def deep_copy(obj: Any) -> Any:
+    return copy.deepcopy(obj)
 
 def is_nan_like(value: Any) -> bool:
-    """Detect NaN / NaT / None safely."""
     try:
         if value is None:
             return True
@@ -311,16 +274,10 @@ def is_nan_like(value: Any) -> bool:
     except Exception:
         return False
 
-
 def normalize_to_none(value: Any) -> Any:
-    """Convert NaN-like values to None."""
     return None if is_nan_like(value) else value
 
-
 def stringify_datetime(dt_any: Any) -> Optional[str]:
-    """
-    Convert datetime-like input to canonical DB datetime string.
-    """
     try:
         parsed = pd.to_datetime(dt_any, errors="coerce")
         if pd.isna(parsed):
@@ -329,80 +286,58 @@ def stringify_datetime(dt_any: Any) -> Optional[str]:
     except Exception:
         return None
 
-
 def stable_hash_text(text: Any) -> str:
-    """Stable SHA-256 hash of any text-like input."""
-    s = str(text)
-    return hashlib.sha256(s.encode("utf-8")).hexdigest()
+    return hashlib.sha256(str(text).encode("utf-8")).hexdigest()
 
 # =============================================================================
-# 1.13 — Debug Environment Snapshot (Read-Only)
+# 1.15 — Environment Snapshot (READ ONLY)
 # =============================================================================
 def debug_env_snapshot() -> Dict[str, Any]:
-    """
-    Return environment diagnostics.
-    """
     return {
-        "app": {
-            "name": APP_NAME,
-            "version": APP_VERSION,
-            "build": APP_BUILD_TAG,
-        },
-        "python": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
-        "sqlite_version": sqlite3.sqlite_version,
-        "boot_utc": BOOT_TIME_UTC,
-        "optional_libs": {
-            "reportlab": AVAILABLE_REPORTLAB,
-            "openpyxl": AVAILABLE_OPENPYXL,
-            "xlsxwriter": AVAILABLE_XLSXWRITER,
-            "kaleido": AVAILABLE_KALEIDO,
-            "matplotlib": AVAILABLE_MATPLOTLIB,
-        },
+        "app": APP_NAME,
+        "version": APP_VERSION,
+        "timezone": DEFAULT_TIMEZONE_LABEL,
+        "python": sys.version,
+        "sqlite": sqlite3.sqlite_version,
+        "boot_local": BOOT_TIME_LOCAL,
     }
 
-
 # =============================================================================
-# 1.14 — Forbidden Operation Guards (Fail Loud)
+# 1.16 — Forbidden Operation Guards
 # =============================================================================
 class SectionGuardError(RuntimeError):
-    """Raised when forbidden operations are attempted in Section 1."""
-
+    pass
 
 def forbidden_in_section_1(operation: str) -> None:
     raise SectionGuardError(
-        "❌ SECTION 1 VIOLATION\n"
-        f"Operation '{operation}' is NOT allowed in Section 1.\n"
-        "Move this logic to Section 3+."
+        f"Operation '{operation}' is forbidden in SECTION 1"
     )
 
-
-# Stub functions (will be overridden later)
-def get_db_connection(*args, **kwargs):
+def get_db_connection(*_, **__):
     forbidden_in_section_1("get_db_connection")
 
-
-def execute_sql(*args, **kwargs):
+def execute_sql(*_, **__):
     forbidden_in_section_1("execute_sql")
 
-
-def fetch_one(*args, **kwargs):
+def fetch_one(*_, **__):
     forbidden_in_section_1("fetch_one")
 
-
-def fetch_all(*args, **kwargs):
+def fetch_all(*_, **__):
     forbidden_in_section_1("fetch_all")
 
-
 # =============================================================================
-# 1.15 — Final Assertions (Fail Early)
+# 1.17 — FINAL ASSERTIONS
 # =============================================================================
-assert isinstance(LOGGER, logging.Logger)
 assert DB_FILENAME == "SWG_DATA.db"
-assert DT_STORAGE_FORMAT == "%Y-%m-%d %H:%M:%S"
 assert len(SWG_IDS) == 3
+assert DEFAULT_TIMEZONE_LABEL == "Asia/Phnom_Penh"
 
-LOGGER.info("✅ SECTION 1 loaded successfully — runtime is SAFE.")
+# HARD TIMEZONE SELF-CHECK (WARN ONLY)
+_now_test = safe_local_now()
+if _now_test.hour == datetime.utcnow().hour:
+    LOGGER.warning("⚠️ Timezone may still be UTC — verify ZoneInfo config")
 
+LOGGER.info("✅ SECTION 1 loaded — timezone locked to Asia/Phnom_Penh.")
 # =============================================================================
 # END SECTION 1
 # =============================================================================
@@ -3480,4 +3415,5 @@ LOGGER.info("✏️ SECTION 12 loaded — TODAY-ONLY edit system locked.")
 # =============================================================================
 # END SECTION 12
 # =============================================================================
+
 
